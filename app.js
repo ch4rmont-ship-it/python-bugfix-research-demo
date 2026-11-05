@@ -97,7 +97,7 @@ function renderPractice(){
  <div class="editor-layout">
  <div class="grid" style="align-items:start">
    <div class="card editor-card"><div class="editor-bar"><span class="editor-file"><span class="editor-dot"></span>${safe(t.id)}_bug_${state.variant+1}.py</span>${pill("Python 3")}</div>
-   <textarea id="practice-editor" class="editor-textarea" spellcheck="false" aria-label="Python editor">${safe(state.code)}</textarea>
+   <div class="code-surface"><div class="line-gutter" id="practice-gutter" aria-hidden="true"></div><textarea id="practice-editor" class="editor-textarea" spellcheck="false" aria-label="Python editor" autocapitalize="off" autocomplete="off" autocorrect="off">${safe(state.code)}</textarea></div>
    <div class="editor-footer"><button class="btn btn-primary" data-action="practice-run" ${state.busy?"disabled":""}>${state.busy?"Running…":"▷ Run tests"}</button><button class="btn btn-outline" data-action="apply-reference" ${!state.result?"disabled title='Run the tests first'":""}>✧ Apply reference fix</button><span class="muted xs">${t.tests.length} test cases · code auto-saved</span></div></div>
    ${state.result?`<div class="card"><h3 class="card-title">What's happening?</h3><div class="callout mt-12">${safe(explainResult(state.result,t))}</div>${finished?`<p class="small" style="color:#10997b"><strong>✓ Good work!</strong> All ${t.tests.length} cases pass. Try another variation to build fluency.</p>`:`<p class="card-caption">The debugger uses test results and Python exceptions. It does not claim to be a generative AI service.</p>`}</div>`:""}
  </div>
@@ -145,7 +145,7 @@ function renderDebugger(){
  +`<div class="editor-layout">
  <div class="grid" style="align-items:start">
   <div class="card editor-card"><div class="editor-bar"><span class="editor-file"><span class="editor-dot"></span>my_python_script.py</span>${pill("Interactive Python")}</div>
-  <textarea id="free-editor" class="editor-textarea" style="min-height:360px" spellcheck="false" aria-label="Custom Python code" ${state.freeSession?"readonly":""}>${safe(state.freeCode)}</textarea>
+  <div class="code-surface"><div class="line-gutter" id="free-gutter" aria-hidden="true"></div><textarea id="free-editor" class="editor-textarea" style="min-height:360px" spellcheck="false" aria-label="Custom Python code" autocapitalize="off" autocomplete="off" autocorrect="off" ${state.freeSession?"readonly":""}>${safe(state.freeCode)}</textarea></div>
   <div class="stdin-panel"><div class="flex-between"><label class="label" for="stdin-editor">OPTIONAL INPUT DATA (stdin)</label>${pill("Interactive input()","success")}</div><textarea id="stdin-editor" class="input stdin-textarea mono" rows="3" placeholder="10&#10;20" spellcheck="false" aria-label="Optional input values, one per line" ${state.freeSession?"readonly":""}>${safe(state.freeInput)}</textarea><p class="card-caption">Leave blank to enter each <span class="mono">input()</span> interactively in the console. Or paste as many lines as needed here before running.</p><button class="btn btn-soft btn-sm mt-12" data-action="sample-add">+ Load A + B input example</button> <button class="btn btn-outline btn-sm mt-12" data-action="sample-three">+ Load 3-number example</button> <button class="btn btn-outline btn-sm mt-12" data-action="sample-loop">+ Interactive loop demo</button></div>
   <div class="editor-footer"><button class="btn btn-primary" data-action="free-run" ${state.busy?"disabled":""}>${state.busy?"Executing…":state.freeSession?"↻ Restart program":"▷ Run Code"}</button>${state.freeSession?`<button class="btn btn-danger" data-action="stop-free">■ Stop</button>`:""}<button class="btn btn-outline" data-action="copy-free">Copy</button><button class="btn btn-outline" data-action="download-free">↓ .py</button><span class="xs muted">Python 3 · Browser runtime</span></div></div>
   <div class="callout"><strong>How this works:</strong> Uses Python via WebAssembly. When the console asks for input, type a value and press Enter; the current script is replayed with all collected inputs. No API key needed. Not all CPython packages or OS features are available.</div>
@@ -213,27 +213,55 @@ function renderGuide(){
  ${miniFeature("✦","Learning first","Hints become more specific only when you request them.")}
  </div>`;
 }
+function wireEditor(editor,gutterSelector,onChange,onRun){
+ const gutter=el(gutterSelector);
+ if(!gutter)return;
+ const update=()=>{
+   const codeValue=String(editor.value??"");
+   const lineCount=codeValue.split("\n").length;
+   const cached=Number(gutter.dataset?.lineCount||0);
+   if(cached!==lineCount){
+    gutter.textContent=Array.from({length:lineCount},(_,i)=>String(i+1)).join("\n");
+    if(gutter.dataset)gutter.dataset.lineCount=String(lineCount);
+   }
+   gutter.scrollTop=editor.scrollTop;
+   const position=Number(editor.selectionStart||0);
+   const before=codeValue.slice(0,position);
+   const lines=before.split("\n");
+   const status=el("#cursor-status");
+   if(status)status.textContent=`Ln ${lines.length}, Col ${lines[lines.length-1].length+1}`;
+ };
+ editor.addEventListener("input",()=>{onChange();update();});
+ editor.addEventListener("click",update);
+ editor.addEventListener("keyup",update);
+ editor.addEventListener("focus",update);
+ editor.addEventListener("scroll",()=>{gutter.scrollTop=editor.scrollTop;});
+ editor.addEventListener("keydown",event=>{
+  if(event.key==="Tab"&&!editor.readOnly){
+   event.preventDefault();
+   const begin=editor.selectionStart,end=editor.selectionEnd;
+   editor.setRangeText("    ",begin,end,"end");
+   onChange();update();
+  } else if(event.key==="Enter"&&(event.ctrlKey||event.metaKey)){
+   event.preventDefault();void onRun();
+  }
+ });
+ update();
+}
+
 function render(){
  const body={dashboard:renderDashboard,practice:renderPractice,debugger:renderDebugger,analytics:renderAnalytics,guide:renderGuide};
  el("#app").innerHTML=(body[state.page]||renderDashboard)();
- document.querySelectorAll("#nav [data-page]").forEach(b=>b.classList.toggle("active",b.dataset.page===state.page));
+ document.querySelectorAll("#nav [data-page], .workspace-tabs [data-page]").forEach(b=>b.classList.toggle("active",b.dataset.page===state.page));
  const titles={dashboard:"Overview",practice:"Debug playground",debugger:"Python Compiler",analytics:"Analytics",guide:"Guide"};
  el("#page-crumb").textContent=titles[state.page]||"Overview";
  if(state.page==="practice"){
   const editor=el("#practice-editor");
-  if(editor)editor.addEventListener("input",event=>{state.code=event.target.value;state.result=null;state.revealed=false;storageWrite();});
+  if(editor)wireEditor(editor,"#practice-gutter",()=>{state.code=editor.value;state.result=null;state.revealed=false;storageWrite();},performPracticeRun);
   el("#variant-picker")?.addEventListener("change",event=>selectTask(state.taskId,Number(event.target.value)));
  }else if(state.page==="debugger"){
-  el("#free-editor")?.addEventListener("input",event=>{state.freeCode=event.target.value;state.freeResult=null;storageWrite();});
-  el("#free-editor")?.addEventListener("keydown",event=>{
-   if(event.key==="Tab"){
-    event.preventDefault();const t=event.target,start=t.selectionStart,end=t.selectionEnd;
-    t.setRangeText("    ",start,end,"end");state.freeCode=t.value;storageWrite();
-   }
-   if(event.key==="Enter"&&(event.ctrlKey||event.metaKey)){
-    event.preventDefault();void performFreeRun();
-   }
-  });
+  const freeEditor=el("#free-editor");
+  if(freeEditor)wireEditor(freeEditor,"#free-gutter",()=>{state.freeCode=freeEditor.value;state.freeResult=null;storageWrite();},performFreeRun);
   el("#stdin-editor")?.addEventListener("input",event=>{state.freeInput=event.target.value;state.freeResult=null;storageWrite();});
   el("#terminal-input")?.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();void supplyConsoleInput();}});
   if(state.freeResult?.inputRequired){el("#terminal-input")?.focus();}

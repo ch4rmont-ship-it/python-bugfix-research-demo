@@ -1,6 +1,6 @@
 # Python Debug Lab
 
-A polished, **fully working Python debugging demo website** for practising programming-error detection and correction. Includes five programming topics, 25 intentionally buggy variants, an editable Python runner, unit tests, three graduated hint levels, a separate free-form Error Detective, and locally saved learning analytics.
+A polished, **fully working Python debugging demo website** with a VS Code-inspired dark developer workspace for practising programming-error detection and correction. Includes five programming topics, 25 intentionally buggy variants, an editable Python runner, unit tests, three graduated hint levels, a separate free-form Error Detective, and locally saved learning analytics.
 
 **This is a coding-learning application, not a survey or research study.** It uses deterministic error guidance and reference solutions, not an external AI model. No API key, backend, registration, or database is required.
 
@@ -16,9 +16,11 @@ A polished, **fully working Python debugging demo website** for practising progr
 | Reference fix | Unlock and apply a verified reference implementation after running tests |
 | Online Python Compiler | Edit your Python code; run it, supply any number of values via interactive `input()` prompts or multiline stdin, inspect output and errors |
 | Analytics | Saved pass/fail attempts, per-topic progress chart, CSV export, clear history |
-| Design | Responsive desktop and mobile layout |
+| Design | VS Code-inspired dark editor, file tabs, line numbers, cursor location, status bar, responsive desktop and mobile layout |
 
 ## Run the site
+
+The visual design uses a dark graphite desktop-workspace theme with tabs and Monaco-inspired code typography. Both the playground and compiler editors show synced line numbers, support Tab indentation and Ctrl/Cmd+Enter to run.
 
 The project is a static website. It **must be served over HTTP** rather than opened directly as a `file://` page because it uses ES modules and a Web Worker.
 

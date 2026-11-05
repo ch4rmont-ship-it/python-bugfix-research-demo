@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#101b36">
+  <meta name="theme-color" content="#0b111b">
   <meta name="description" content="Python Debug Lab — interactive Python debugging learning platform with real execution, hints and progress tracking.">
-  <title>Python Debug Lab | Python Debugging Platform</title>
+  <title>Python Debug Lab — Developer Workspace</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -15,10 +15,10 @@
   <div class="layout">
     <aside class="sidebar" id="sidebar" aria-label="Main navigation">
       <div class="brand">
-        <div class="brand-mark">{ }</div>
-        <div><strong>debug<span class="brand-accent">lab</span></strong><small>PYTHON LEARNING</small></div>
+        <div class="brand-mark"><span class="brand-brackets">⌘</span></div>
+        <div><strong>debug<span class="brand-accent">lab</span></strong><small>DEV WORKSPACE</small></div>
       </div>
-      <div class="nav-heading">WORKSPACE</div>
+      <div class="nav-heading"><span class="explorer-mark">⌄</span> EXPLORER</div><div class="sidebar-tree-title"><span class="tree-chevron">⌄</span> PYTHON-DEBUG-LAB</div>
       <nav class="side-nav" id="nav">
         <button data-page="dashboard" class="nav-item active"><span class="nav-icon">◫</span> Overview</button>
         <button data-page="practice" class="nav-item"><span class="nav-icon">⌘</span> Debug playground <span class="nav-count">25</span></button>
@@ -28,20 +28,26 @@
       </nav>
       <div class="side-bottom">
         <div class="side-tip"><span class="tip-icon">✦</span><strong>AI &amp; Innovative Design</strong><p>Interactive Python bug-fixing · USTB course demo</p></div>
-        <div class="side-footer"><span class="live-dot"></span> No API key required <span class="side-version">v1.0</span></div>
+        <div class="side-footer"><span class="live-dot"></span> No API key required <span class="side-version">v2.0</span></div>
       </div>
     </aside>
     <div class="content-shell">
       <header class="topbar">
         <button class="mobile-menu" data-action="menu" aria-label="Toggle menu">☰</button>
-        <div class="breadcrumbs"><span>Workspace</span><span class="crumb-separator">/</span><strong id="page-crumb">Overview</strong></div>
+        <div class="window-controls" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div class="breadcrumbs"><span class="project-icon">⌁</span><span>python-debug-lab</span><span class="crumb-separator">/</span><strong id="page-crumb">Overview</strong></div>
         <div class="header-actions">
           <span class="env-pill"><span class="live-dot"></span> Browser Python</span>
           <button class="avatar-button" title="Local coding workspace">AZ</button>
         </div>
       </header>
+      <nav class="workspace-tabs" aria-label="Open workspace tabs">
+        <button class="workspace-tab" data-page="debugger"><span class="python-file-icon">Py</span> main.py <span class="workspace-tab-close">×</span></button>
+        <button class="workspace-tab" data-page="practice"><span class="python-file-icon yellow">Py</span> challenges.py <span class="workspace-tab-close">×</span></button>
+        <button class="workspace-tab" data-page="analytics"><span class="python-file-icon green">{ }</span> analytics.json</button>
+      </nav>
       <main id="app" class="main" aria-live="polite"></main>
-      <footer class="footer">Built for learning to debug Python <span>·</span> Your progress is saved locally in this browser.</footer>
+      <footer class="footer"><span class="status-left"><span class="status-branch">⑂ main</span><span class="status-ok">✓ 0</span><span>Python Debug Lab</span></span><span class="status-right"><span id="cursor-status">Ln 1, Col 1</span><span>Spaces: 4</span><span>UTF-8</span><span>Python 3</span><span class="status-live"><span class="live-dot"></span> Browser runtime</span></span></footer>
     </div>
   </div>
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
