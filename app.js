@@ -23,7 +23,7 @@ const state = {
  freeCode:saved.freeCode||DEFAULT_CODE,
  freeInput:typeof saved.freeInput==="string"?saved.freeInput:"",
  history:Array.isArray(saved.history)?saved.history:[],
- hints:0, result:null, freeResult:null, busy:false, working:"", revealed:false,
+ hints:0, result:null, freeResult:null, freeSession:null, busy:false, working:"", revealed:false,
  tool:"explanation"
 };
 if(!saved.taskId)state.code=tasks[0].variants[0].code;
@@ -140,24 +140,26 @@ function diagnose(error){const value=String(error||"Unknown error");const name=v
 
 function renderDebugger(){
  const r=state.freeResult;
- return title("Python tools","Error Detective","Paste or write your own Python code. Run it, capture exceptions, and see understandable troubleshooting advice.",
+ return title("Python tools","Online Python Compiler","Write Python, run your code, and enter input() values interactively in the console — or paste a batch of stdin lines.",
  button("↺ Reset example","reset-free","btn-outline"))
  +`<div class="editor-layout">
  <div class="grid" style="align-items:start">
-  <div class="card editor-card"><div class="editor-bar"><span class="editor-file"><span class="editor-dot"></span>my_python_script.py</span>${pill("Free-form Python")}</div>
-  <textarea id="free-editor" class="editor-textarea" style="min-height:360px" spellcheck="false" aria-label="Custom Python code">${safe(state.freeCode)}</textarea>
-  <div class="stdin-panel"><div class="flex-between"><label class="label" for="stdin-editor">STANDARD INPUT (stdin)</label>${pill("input() supported","success")}</div><textarea id="stdin-editor" class="input stdin-textarea mono" rows="3" placeholder="10&#10;20" spellcheck="false" aria-label="Input values, one per line">${safe(state.freeInput)}</textarea><p class="card-caption">One value per line. Every Python <span class="mono">input()</span> reads the next line. Example: type 10 on line 1 and 20 on line 2.</p><button class="btn btn-soft btn-sm mt-12" data-action="sample-add">+ Load A + B input example</button> <button class="btn btn-outline btn-sm mt-12" data-action="sample-three">+ Load 3-number example</button></div>
-  <div class="editor-footer"><button class="btn btn-primary" data-action="free-run" ${state.busy?"disabled":""}>${state.busy?"Executing…":"▷ Execute Python"}</button><button class="btn btn-outline" data-action="copy-free">Copy code</button><span class="xs muted">No account · browser-only execution</span></div></div>
-  <div class="callout"><strong>How this works:</strong> Python runs in a disposable Web Worker using Pyodide (WebAssembly). Exceptions are classified with deterministic guidance. General semantic/logic correctness cannot be established without test cases and an expected result.</div>
+  <div class="card editor-card"><div class="editor-bar"><span class="editor-file"><span class="editor-dot"></span>my_python_script.py</span>${pill("Interactive Python")}</div>
+  <textarea id="free-editor" class="editor-textarea" style="min-height:360px" spellcheck="false" aria-label="Custom Python code" ${state.freeSession?"readonly":""}>${safe(state.freeCode)}</textarea>
+  <div class="stdin-panel"><div class="flex-between"><label class="label" for="stdin-editor">OPTIONAL INPUT DATA (stdin)</label>${pill("Interactive input()","success")}</div><textarea id="stdin-editor" class="input stdin-textarea mono" rows="3" placeholder="10&#10;20" spellcheck="false" aria-label="Optional input values, one per line" ${state.freeSession?"readonly":""}>${safe(state.freeInput)}</textarea><p class="card-caption">Leave blank to enter each <span class="mono">input()</span> interactively in the console. Or paste as many lines as needed here before running.</p><button class="btn btn-soft btn-sm mt-12" data-action="sample-add">+ Load A + B input example</button> <button class="btn btn-outline btn-sm mt-12" data-action="sample-three">+ Load 3-number example</button> <button class="btn btn-outline btn-sm mt-12" data-action="sample-loop">+ Interactive loop demo</button></div>
+  <div class="editor-footer"><button class="btn btn-primary" data-action="free-run" ${state.busy?"disabled":""}>${state.busy?"Executing…":state.freeSession?"↻ Restart program":"▷ Run Code"}</button>${state.freeSession?`<button class="btn btn-danger" data-action="stop-free">■ Stop</button>`:""}<button class="btn btn-outline" data-action="copy-free">Copy</button><button class="btn btn-outline" data-action="download-free">↓ .py</button><span class="xs muted">Python 3 · Browser runtime</span></div></div>
+  <div class="callout"><strong>How this works:</strong> Uses Python via WebAssembly. When the console asks for input, type a value and press Enter; the current script is replayed with all collected inputs. No API key needed. Not all CPython packages or OS features are available.</div>
  </div>
  <div class="grid" style="align-items:start">
-  <div class="card"><div class="panel-head"><span class="stat-ico purple">⌘</span><div><h3>Execution console</h3><p>Standard output and exception information</p></div></div>
-  ${r?`<div class="flex-between">${pill(r.executionError?"ERROR":"SUCCESS",r.executionError?"warn":"success")}</div>
-  <pre class="code-output mt-18">${safe(r.stdout||"(No output printed)")}</pre>
-  ${r.executionError?`<div class="hint-card"><strong>EXCEPTION</strong><p class="mono">${safe(r.executionError)}</p>${/^EOFError/.test(r.executionError)?`<p>Missing input: your Python code requests more values than the Standard Input box provides. Put each value on its own line, then press Execute Python again.</p>`:""}</div>`:""}
-  `:`<div class="empty"><div class="empty-icon">▷</div><h3>Nothing executed yet</h3><p>Press Execute Python to view output and errors.</p></div>`}</div>
+  <div class="card"><div class="flex-between"><div class="panel-head" style="margin:0"><span class="stat-ico purple">⌘</span><div><h3>Interactive console</h3><p>Output and input — like an online compiler</p></div></div><button class="btn btn-outline btn-sm" data-action="clear-console">Clear</button></div>
+  <div class="compiler-terminal" role="region" aria-label="Python console output"><div class="terminal-topline"><span class="terminal-light"></span> <span>output / Python 3</span> ${pill(state.busy?"RUNNING":r?.inputRequired?"AWAITING INPUT":r?.executionError?"ERROR":r?"FINISHED":"READY",r?.inputRequired?"warn":r&&!r.executionError?"success":"ink")}</div>
+  <pre class="terminal-output" id="terminal-output">${r?safe(r.stdout||"(No output printed)"):"Press Run Code to execute Python.\nIf input() requests data, type below."}</pre>
+  ${r?.inputRequired?`<div class="terminal-input-wrap"><div class="terminal-hint">${safe(r.inputPrompt||"Python input() is waiting for a value")} · type below and press Enter</div><div class="terminal-input-line"><span class="terminal-chevron">›</span><input id="terminal-input" type="text" autocomplete="off" spellcheck="false" placeholder="Enter value and press Enter" aria-label="Value for Python input()"><button class="btn btn-primary btn-sm" data-action="send-console-input">Enter ↵</button></div></div>`:""}
+  ${r?.stderr?`<div class="terminal-error"><strong>stderr:</strong><pre class="code-output">${safe(r.stderr)}</pre></div>`:""}
+  ${r?.executionError?`<div class="terminal-error"><strong>Exception:</strong> ${safe(r.executionError)}${r.traceback?`<details class="mt-12"><summary>Show Python traceback</summary><pre class="code-output">${safe(r.traceback)}</pre></details>`:""}</div>`:""}
+  </div><p class="card-caption mt-12">The console accepts any number of <span class="mono">input()</span> requests. For <span class="mono">sys.stdin.read()</span>, supply all data in Optional Input Data before running.</p></div>
   <div class="card"><div class="panel-head"><span class="stat-ico teal">✦</span><div><h3>Debugger explanation</h3><p>Rule-based guidance · no API key</p></div></div>
-  ${r?`<div class="callout"><strong>${r.executionError?"Suggested next step":"No runtime exception detected"}</strong><p>${safe(r.executionError?diagnose(r.executionError):"The script executed without a reported exception. If the output is incorrect, compare it with a known expected result or switch to Practice for unit-tested exercises.")}</p></div>`:
+  ${r?`<div class="callout"><strong>${r.inputRequired?"Waiting for keyboard input":r.executionError?"Suggested next step":"No runtime exception detected"}</strong><p>${safe(r.inputRequired?"Type a value in the Interactive Console and press Enter to continue. Each input is replayed to produce the next prompt or final result.":r.executionError?diagnose(r.executionError):"The script executed without a reported exception. If the output is incorrect, compare it with a known expected result or switch to Practice for unit-tested exercises.")}</p></div>`:
  `<p class="card-caption">When you run your code, Python will report errors such as NameError, TypeError, SyntaxError, IndentationError and more. We'll describe their likely causes here.</p>`}
   </div>
   <div class="card"><h3 class="card-title">Try an error example</h3><div class="grid mt-12">
@@ -202,7 +204,7 @@ function renderGuide(){
  <button class="btn btn-primary" data-page="practice">Try a challenge →</button>
  </div>
  <div class="grid">
- <div class="card"><h3 class="card-title">Demo features</h3><ul class="bullet-list"><li>25 buggy code variants in five topics</li><li>Real Python 3 runtime via Pyodide</li><li>4–6 test cases per exercise</li><li>Step-by-step hints and canonical fixes</li><li>Free-form code execution with exception guidance</li><li>Local progress dashboard, analytics, CSV export</li><li>Responsive mobile and desktop layout</li></ul></div>
+ <div class="card"><h3 class="card-title">Demo features</h3><ul class="bullet-list"><li>25 buggy code variants in five topics</li><li>Real Python 3 runtime via Pyodide</li><li>4–6 test cases per exercise</li><li>Step-by-step hints and canonical fixes</li><li>Online Python compiler: console input() prompts and batch stdin</li><li>Free-form code execution with exception guidance</li><li>Local progress dashboard, analytics, CSV export</li><li>Responsive mobile and desktop layout</li></ul></div>
  <div class="callout"><strong>Important limitations.</strong> The platform is a functioning rule-based demo, not a live generative AI chatbot. The first run requires internet access to download the Python WebAssembly runtime. Code execution occurs inside a browser Worker with a time limit; it is not a hardened server-side security sandbox. Progress is kept only in this browser.</div>
  </div></div>
  <div class="grid grid-3 mt-18">
@@ -215,7 +217,7 @@ function render(){
  const body={dashboard:renderDashboard,practice:renderPractice,debugger:renderDebugger,analytics:renderAnalytics,guide:renderGuide};
  el("#app").innerHTML=(body[state.page]||renderDashboard)();
  document.querySelectorAll("#nav [data-page]").forEach(b=>b.classList.toggle("active",b.dataset.page===state.page));
- const titles={dashboard:"Overview",practice:"Debug playground",debugger:"Error Detective",analytics:"Analytics",guide:"Guide"};
+ const titles={dashboard:"Overview",practice:"Debug playground",debugger:"Python Compiler",analytics:"Analytics",guide:"Guide"};
  el("#page-crumb").textContent=titles[state.page]||"Overview";
  if(state.page==="practice"){
   const editor=el("#practice-editor");
@@ -223,7 +225,18 @@ function render(){
   el("#variant-picker")?.addEventListener("change",event=>selectTask(state.taskId,Number(event.target.value)));
  }else if(state.page==="debugger"){
   el("#free-editor")?.addEventListener("input",event=>{state.freeCode=event.target.value;state.freeResult=null;storageWrite();});
+  el("#free-editor")?.addEventListener("keydown",event=>{
+   if(event.key==="Tab"){
+    event.preventDefault();const t=event.target,start=t.selectionStart,end=t.selectionEnd;
+    t.setRangeText("    ",start,end,"end");state.freeCode=t.value;storageWrite();
+   }
+   if(event.key==="Enter"&&(event.ctrlKey||event.metaKey)){
+    event.preventDefault();void performFreeRun();
+   }
+  });
   el("#stdin-editor")?.addEventListener("input",event=>{state.freeInput=event.target.value;state.freeResult=null;storageWrite();});
+  el("#terminal-input")?.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();void supplyConsoleInput();}});
+  if(state.freeResult?.inputRequired){el("#terminal-input")?.focus();}
  }
 }
 let worker=null,sequence=0,workerReady=false;
@@ -272,14 +285,61 @@ async function performPracticeRun(){
   notify(error.message,true);
  }finally{state.busy=false;render();}
 }
+let freeRunToken=0;
+function initialStdin(value){
+ const normalized=String(value||"").replace(/\r\n?/g,"\n");
+ return normalized && !normalized.endsWith("\n")?normalized+"\n":normalized;
+}
+function cancelFreeRun(){
+ freeRunToken++;
+ if(state.busy)discardWorker();
+ state.busy=false;state.freeSession=null;
+}
+async function executeFreeSession(token){
+ const session=state.freeSession;
+ if(!session)return;
+ state.busy=true;render();
+ try{
+  const result=await runPython({mode:"execute",code:session.code,stdin:session.stdin,tests:[]});
+  if(token!==freeRunToken)return;
+  state.freeResult=result;
+  state.busy=false;
+  if(result.inputRequired){
+   session.requests++;
+   if(session.requests>100){
+    state.freeSession=null;
+    state.freeResult={...result,inputRequired:false,executionError:"Input limit reached (100 prompts). Reduce the number of prompts or use Optional Input Data."};
+    notify("Too many interactive input prompts.",true);
+   }
+  }else{
+   state.freeSession=null;
+   notify(result.executionError?`Python error: ${result.executionError}`:"Execution complete.",Boolean(result.executionError));
+  }
+ }catch(error){
+  if(token!==freeRunToken)return;
+  state.freeResult={tests:[],stdout:"",executionError:error.message};
+  state.freeSession=null;state.busy=false;
+  notify(error.message,true);
+ }
+ if(token===freeRunToken)render();
+}
 async function performFreeRun(){
  if(state.busy)return;
- const code=state.freeCode;state.busy=true;render();notify("Executing Python in a browser worker…");
- try{
-  state.freeResult=await runPython({mode:"execute",code,stdin:state.freeInput,tests:[]});
-  notify(state.freeResult.executionError?`Python error: ${state.freeResult.executionError}`:"Execution complete.",!!state.freeResult.executionError);
- }catch(e){state.freeResult={tests:[],stdout:"",executionError:e.message};notify(e.message,true);}
- finally{state.busy=false;render();}
+ cancelFreeRun();
+ const token=freeRunToken;
+ state.freeSession={code:state.freeCode,stdin:initialStdin(state.freeInput),requests:0};
+ state.freeResult=null;
+ notify("Starting Python... If more input is needed, the console will ask you.");
+ await executeFreeSession(token);
+}
+async function supplyConsoleInput(){
+ const session=state.freeSession;
+ if(!session||!state.freeResult?.inputRequired||state.busy)return;
+ const input=el("#terminal-input");if(!input)return;
+ const value=input.value;
+ if(value.length>3000){notify("Single input line cannot exceed 3000 characters.",true);return;}
+ session.stdin+=value+"\n";
+ await executeFreeSession(freeRunToken);
 }
 function exportCsv(){
  if(!state.history.length){notify("No test records to export yet.",true);return;}
@@ -311,11 +371,16 @@ document.addEventListener("click",event=>{
   case "apply-reference":if(!state.result)return;state.code=solution();state.revealed=true;state.result=null;storageWrite();render();notify("Reference solution inserted. Run the tests to verify.");return;
   case "practice-run":void performPracticeRun();return;
   case "free-run":void performFreeRun();return;
-  case "reset-free":if(confirm("Restore the demo script?")){state.freeCode=DEFAULT_CODE;state.freeResult=null;storageWrite();render();}return;
+  case "send-console-input":void supplyConsoleInput();return;
+  case "stop-free":cancelFreeRun();state.freeResult={tests:[],stdout:state.freeResult?.stdout||"",executionError:"Execution stopped by user."};render();notify("Python execution stopped.");return;
+  case "clear-console":cancelFreeRun();state.freeResult=null;render();return;
+  case "reset-free":if(confirm("Restore the demo script?")){cancelFreeRun();state.freeCode=DEFAULT_CODE;state.freeResult=null;storageWrite();render();}return;
+  case "download-free":downloadText(state.freeCode,"main.py","text/x-python;charset=utf-8");notify("Python file downloaded.");return;
   case "copy-free":{const code=state.freeCode;if(navigator.clipboard?.writeText){navigator.clipboard.writeText(code).then(()=>notify("Code copied."),()=>notify("Clipboard unavailable.",true));}else{notify("Clipboard requires HTTPS.",true);}return;}
   case "sample-error":state.freeCode=SAMPLES[Number(clickable.dataset.sample)]||DEFAULT_CODE;state.freeResult=null;storageWrite();render();return;
-  case "sample-add":state.freeCode='A = int(input("Enter A: "))\nB = int(input("Enter B: "))\nprint("A + B =", A + B)';state.freeInput="10\n20";state.freeResult=null;storageWrite();render();notify("A + B example loaded with two input values.");return;
-  case "sample-three":state.freeCode='A = int(input("Enter A: "))\nB = int(input("Enter B: "))\nC = int(input("Enter C: "))\nprint("Maximum:", max(A, B, C))\nprint("Minimum:", min(A, B, C))\nprint("Average:", (A + B + C) / 3)';state.freeInput="15\n30\n45";state.freeResult=null;storageWrite();render();notify("Three-number example and its three inputs loaded.");return;
+  case "sample-add":cancelFreeRun();state.freeCode='A = int(input("Enter A: "))\nB = int(input("Enter B: "))\nprint("A + B =", A + B)';state.freeInput="10\n20";state.freeResult=null;storageWrite();render();notify("A + B example loaded with two input values.");return;
+  case "sample-loop":cancelFreeRun();state.freeCode='n = int(input("How many numbers? "))\ntotal = 0\nfor i in range(n):\n    value = int(input(f"Number {i+1}: "))\n    total += value\nprint("Sum:", total)';state.freeInput="";state.freeResult=null;storageWrite();render();notify("Interactive loop sample loaded. Press Run Code to enter inputs.");return;
+  case "sample-three":cancelFreeRun();state.freeCode='A = int(input("Enter A: "))\nB = int(input("Enter B: "))\nC = int(input("Enter C: "))\nprint("Maximum:", max(A, B, C))\nprint("Minimum:", min(A, B, C))\nprint("Average:", (A + B + C) / 3)';state.freeInput="15\n30\n45";state.freeResult=null;storageWrite();render();notify("Three-number example and its three inputs loaded.");return;
   case "export-csv":exportCsv();return;
   case "clear-history":if(confirm("Delete all recorded practice history from this browser? This cannot be undone.")){state.history=[];storageWrite();render();notify("Progress records cleared.");}return;
  }

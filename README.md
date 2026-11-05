@@ -14,7 +14,7 @@ A polished, **fully working Python debugging demo website** for practising progr
 | Error explanation | Python exception classification and test-driven logic error explanation |
 | Guided hints | Three levels: input/example → concept → detailed repair |
 | Reference fix | Unlock and apply a verified reference implementation after running tests |
-| Error Detective | Run your own Python script, supply standard input (`input()`), inspect output, exceptions and common diagnostics |
+| Online Python Compiler | Edit your Python code; run it, supply any number of values via interactive `input()` prompts or multiline stdin, inspect output and errors |
 | Analytics | Saved pass/fail attempts, per-topic progress chart, CSV export, clear history |
 | Design | Responsive desktop and mobile layout |
 
@@ -62,7 +62,7 @@ tests/                 Challenge consistency tests
 1. Open **Debug playground**, pick *Sum Positive Values*, and click **Run tests**. The deliberately wrong condition fails.
 2. Click **Reveal next hint** one to three times to reveal progressively more specific guidance.
 3. Edit the inequality (or click **Apply reference fix**) and run again to pass the tests.
-4. Switch to **Error Detective**. Click **Load A + B input example** and notice that the Standard Input box contains `10` and `20` on separate lines. Execute the code: the output will include `A + B = 30`. Edit both values and run again. You can also run the provided exception examples.
+4. Open **Python Compiler**. Click **Interactive loop demo**, then **Run Code**. Enter a count (such as `3`) and press Enter, then supply three numbers one at a time in the console. The final sum appears in output. Alternatively, fill **Optional Input Data (stdin)** with one input per line and click **Run Code** once. You can download the code as a `.py` file.
 5. Open **Analytics** to see progress and download CSV.
 
 ## Privacy and limitations
@@ -70,6 +70,9 @@ tests/                 Challenge consistency tests
 - All practice records are saved in your own browser via `localStorage`; clearing site data loses them. Export CSV to preserve history.
 - No code or progress is sent to an application backend. Loading the Python runtime requires requests to the CDN.
 - Python runs inside a browser Worker and is terminated if execution times out. This is **not** a hardened multi-user server sandbox, and the app should not be used to execute untrusted code with sensitive browser data.
+- Interactive `input()` support is implemented by **replaying the script from its beginning with all collected input values**, rather than pausing a native process. For deterministic coding examples, prompts and outputs behave as expected, but scripts with external side effects, random state, time-dependent behavior, or complex I/O may not behave like a full native Python process.
+- Direct `sys.stdin.read()` and `sys.stdin.readline()` can consume the optional preloaded stdin, but do not dynamically request more values. Interactive input is supported for built-in `input()`; limit 100 input prompts per execution.
+- Press **Ctrl+Enter** inside the editor to run; **Tab** inserts four spaces. **Stop** terminates a running script; **Clear** resets the console.
 - Passing the provided tests does not prove correctness on all possible inputs. Free-form code execution can identify syntax/runtime errors but cannot verify arbitrary program intent without specifications and expected outputs.
 - This is a functional demo of structured debugging assistance, not a live generative AI service.
 
