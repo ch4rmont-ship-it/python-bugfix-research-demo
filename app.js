@@ -201,7 +201,7 @@ function renderDebugger(){
  +`<div class="editor-layout">
  <div class="grid" style="align-items:start">
   <div class="card editor-card"><div class="editor-bar"><span class="editor-file"><span class="editor-dot"></span>my_python_script.py</span>${pill("Interactive Python")}</div>
-  <div class="code-surface"><div class="monaco-mount" hidden></div><div class="line-gutter" id="free-gutter" aria-hidden="true"></div><textarea id="free-editor" class="editor-textarea" style="min-height:360px" spellcheck="false" aria-label="Custom Python code" autocapitalize="off" autocomplete="off" autocorrect="off" ${state.freeSession?"readonly":""}>${safe(state.freeCode)}</textarea></div>
+  <div class="code-surface"><div class="monaco-mount" hidden></div><div class="line-gutter" id="free-gutter" aria-hidden="true"></div><textarea id="free-editor" class="editor-textarea" style="min-height:360px" spellcheck="false" aria-label="Custom Python code" autocapitalize="off" autocomplete="off" autocorrect="off" ${state.busy||state.freeSession?"readonly":""}>${safe(state.freeCode)}</textarea></div>
   <div class="stdin-panel"><div class="flex-between"><label class="label" for="stdin-editor">OPTIONAL INPUT DATA (stdin)</label>${pill("Interactive input()","success")}</div><textarea id="stdin-editor" class="input stdin-textarea mono" rows="3" placeholder="10&#10;20" spellcheck="false" aria-label="Optional input values, one per line" ${state.freeSession?"readonly":""}>${safe(state.freeInput)}</textarea><p class="card-caption">Leave blank to enter each <span class="mono">input()</span> interactively in the console. Or paste as many lines as needed here before running.</p><button class="btn btn-soft btn-sm mt-12" data-action="sample-add">+ Load A + B input example</button> <button class="btn btn-outline btn-sm mt-12" data-action="sample-three">+ Load 3-number example</button> <button class="btn btn-outline btn-sm mt-12" data-action="sample-loop">+ Interactive loop demo</button></div>
   <div class="editor-footer"><button class="btn btn-primary" data-action="free-run" ${state.busy?"disabled":""}>${state.busy?"Executing…":state.freeSession?"↻ Restart program":"▷ Run Code"}</button>${state.freeSession?`<button class="btn btn-danger" data-action="stop-free">■ Stop</button>`:""}<button class="btn btn-outline" data-action="copy-free">Copy</button><button class="btn btn-outline" data-action="download-free">↓ .py</button><span class="xs muted">Python 3 · Browser runtime</span></div></div>
   ${renderCustomTests()}
@@ -339,8 +339,8 @@ function render(){
   el("#variant-picker")?.addEventListener("change",event=>selectTask(state.taskId,Number(event.target.value)));
  }else if(state.page==="debugger"){
   const freeEditor=el("#free-editor");
-  if(freeEditor)wireEditor(freeEditor,"#free-gutter",()=>{state.freeCode=freeEditor.value;state.freeResult=null;storageWrite();},performFreeRun);
-  if(freeEditor&&typeof window!=="undefined")void enhancePythonEditor("free-editor",value=>{state.freeCode=value;state.freeResult=null;storageWrite();},performFreeRun);
+  if(freeEditor)wireEditor(freeEditor,"#free-gutter",()=>{state.freeCode=freeEditor.value;state.freeResult=null;state.customResults=[];state.reviewFindings=null;state.aiResult="";storageWrite();},performFreeRun);
+  if(freeEditor&&typeof window!=="undefined")void enhancePythonEditor("free-editor",value=>{state.freeCode=value;state.freeResult=null;state.customResults=[];state.reviewFindings=null;state.aiResult="";storageWrite();},performFreeRun);
   el("#stdin-editor")?.addEventListener("input",event=>{state.freeInput=event.target.value;state.freeResult=null;storageWrite();});
   document.querySelectorAll('[data-case-id][data-case-field]').forEach(node=>node.addEventListener('input',event=>{
    const item=state.customCases.find(c=>String(c.id)===event.target.dataset.caseId);
