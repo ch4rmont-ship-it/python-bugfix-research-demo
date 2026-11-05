@@ -17,7 +17,7 @@ print(factorial(5))`;
 const safe = value => String(value ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const el = query=>document.querySelector(query);
 function storageRead() {try{return JSON.parse(localStorage.getItem(KEY))||{};}catch{return {};}}
-function storageWrite(){try{localStorage.setItem(KEY,JSON.stringify({taskId:state.taskId,variant:state.variant,code:state.code,freeCode:state.freeCode,freeInput:state.freeInput,customCases:state.customCases,history:state.history}));}catch{notify("Storage unavailable: export your records to keep them.",true);}}
+function storageWrite(){try{localStorage.setItem(KEY,JSON.stringify({taskId:state.taskId,variant:state.variant,code:state.code,freeCode:state.freeCode,freeInput:state.freeInput,usePreloadedStdin:state.usePreloadedStdin,customCases:state.customCases,history:state.history}));}catch{notify("Storage unavailable: export your records to keep them.",true);}}
 const saved = storageRead();
 function initialLanguage(){
  try {const language=localStorage.getItem(LANGUAGE_KEY);return supportedLanguages.includes(language)?language:'en';}
@@ -76,10 +76,11 @@ const state = {
  code:saved.code||tasks[0].variants[0].code,
  freeCode:saved.freeCode||DEFAULT_CODE,
  freeInput:typeof saved.freeInput==="string"?saved.freeInput:"",
+ usePreloadedStdin:saved.usePreloadedStdin===true,
  history:Array.isArray(saved.history)?saved.history:[],
  customCases:Array.isArray(saved.customCases)&&saved.customCases.length&&saved.customCases.length<=10?saved.customCases.map(c=>({id:Number(c.id)||Date.now(),stdin:String(c.stdin||""),expected:String(c.expected||"")})):defaultCases.map(c=>({...c})),
  customResults:[], customRunning:false, reviewFindings:null, aiAvailable:false, aiChecked:false, aiResult:"", aiError:"", aiBusy:false,
- hints:0, result:null, freeResult:null, freeSession:null, busy:false, working:"", revealed:false,
+ hints:0, result:null, freeResult:null, freeSession:null, consoleOpen:false, busy:false, working:"", revealed:false,
  tool:"explanation"
 };
 if(!saved.taskId)state.code=tasks[0].variants[0].code;
@@ -202,19 +203,13 @@ function renderDebugger(){
  <div class="grid" style="align-items:start">
   <div class="card editor-card"><div class="editor-bar"><span class="editor-file"><span class="editor-dot"></span>my_python_script.py</span>${pill("Interactive Python")}</div>
   <div class="code-surface"><div class="monaco-mount" hidden></div><div class="line-gutter" id="free-gutter" aria-hidden="true"></div><textarea id="free-editor" class="editor-textarea" style="min-height:360px" spellcheck="false" aria-label="Custom Python code" autocapitalize="off" autocomplete="off" autocorrect="off" ${state.busy||state.freeSession?"readonly":""}>${safe(state.freeCode)}</textarea></div>
-  <div class="stdin-panel"><div class="flex-between"><label class="label" for="stdin-editor">OPTIONAL INPUT DATA (stdin)</label>${pill("Interactive input()","success")}</div><textarea id="stdin-editor" class="input stdin-textarea mono" rows="3" placeholder="10&#10;20" spellcheck="false" aria-label="Optional input values, one per line" ${state.freeSession?"readonly":""}>${safe(state.freeInput)}</textarea><p class="card-caption">Leave blank to enter each <span class="mono">input()</span> interactively in the console. Or paste as many lines as needed here before running.</p><button class="btn btn-soft btn-sm mt-12" data-action="sample-add">+ Load A + B input example</button> <button class="btn btn-outline btn-sm mt-12" data-action="sample-three">+ Load 3-number example</button> <button class="btn btn-outline btn-sm mt-12" data-action="sample-loop">+ Interactive loop demo</button></div>
-  <div class="editor-footer"><button class="btn btn-primary" data-action="free-run" ${state.busy?"disabled":""}>${state.busy?"Executing…":state.freeSession?"↻ Restart program":"▷ Run Code"}</button>${state.freeSession?`<button class="btn btn-danger" data-action="stop-free">■ Stop</button>`:""}<button class="btn btn-outline" data-action="copy-free">Copy</button><button class="btn btn-outline" data-action="download-free">↓ .py</button><span class="xs muted">Python 3 · Browser runtime</span></div></div>
+  <details class="stdin-panel stdin-advanced"><summary>Advanced: preload standard input (optional)${state.usePreloadedStdin&&state.freeInput?` · ${state.freeInput.split("\n").filter(Boolean).length} lines active`:""}</summary><label class="stdin-preload-toggle"><input type="checkbox" id="use-preloaded-stdin" ${state.usePreloadedStdin?"checked":""}><span>Use preloaded stdin instead of entering values in the terminal</span></label><div class="flex-between mt-12"><label class="label" for="stdin-editor">OPTIONAL INPUT DATA (stdin)</label>${pill("Interactive input()","success")}</div><textarea id="stdin-editor" class="input stdin-textarea mono" rows="3" placeholder="10&#10;20" spellcheck="false" aria-label="Optional input values, one per line" ${state.freeSession?"readonly":""}>${safe(state.freeInput)}</textarea><p class="card-caption">Leave blank to enter each <span class="mono">input()</span> interactively in the console. Or paste as many lines as needed here before running.</p></details>
+  <div class="sample-toolbar"><span class="xs muted">Quick examples</span><button class="btn btn-outline btn-sm" data-action="sample-add">A + B</button><button class="btn btn-outline btn-sm" data-action="sample-three">Three numbers</button><button class="btn btn-outline btn-sm" data-action="sample-loop">Input loop</button></div>
+  <div class="editor-footer"><button class="btn btn-primary" data-action="free-run" ${state.busy?"disabled":""}>${state.busy?"Executing…":state.freeSession?"↻ Restart program":"▷ Run Code"}</button>${state.freeSession?`<button class="btn btn-danger" data-action="stop-free">■ Stop</button>`:""}${(state.freeResult||state.freeSession)&&!state.consoleOpen?`<button class="btn btn-soft" data-action="show-console">▣ Open Terminal</button>`:""}<button class="btn btn-outline" data-action="copy-free">Copy</button><button class="btn btn-outline" data-action="download-free">↓ .py</button><span class="xs muted">Python 3 · Browser runtime</span></div></div>
   ${renderCustomTests()}
   <div class="callout"><strong>How this works:</strong> Uses Python via WebAssembly. When the console asks for input, type a value and press Enter; the current script is replayed with all collected inputs. No API key needed. Not all CPython packages or OS features are available.</div>
  </div>
  <div class="grid" style="align-items:start">
-  <div class="card"><div class="flex-between"><div class="panel-head" style="margin:0"><span class="stat-ico purple">⌘</span><div><h3>Interactive console</h3><p>Output and input — like an online compiler</p></div></div><button class="btn btn-outline btn-sm" data-action="clear-console">Clear</button></div>
-  <div class="compiler-terminal" role="region" aria-label="Python console output"><div class="terminal-topline"><span class="terminal-light"></span> <span>output / Python 3</span> ${pill(state.busy?"RUNNING":r?.inputRequired?"AWAITING INPUT":r?.executionError?"ERROR":r?"FINISHED":"READY",r?.inputRequired?"warn":r&&!r.executionError?"success":"ink")}</div>
-  <pre class="terminal-output" id="terminal-output">${r?safe(r.stdout||"(No output printed)"):"Press Run Code to execute Python.\nIf input() requests data, type below."}</pre>
-  ${r?.inputRequired?`<div class="terminal-input-wrap"><div class="terminal-hint">${safe(r.inputPrompt||"Python input() is waiting for a value")} · type below and press Enter</div><div class="terminal-input-line"><span class="terminal-chevron">›</span><input id="terminal-input" type="text" autocomplete="off" spellcheck="false" placeholder="Enter value and press Enter" aria-label="Value for Python input()"><button class="btn btn-primary btn-sm" data-action="send-console-input">Enter ↵</button></div></div>`:""}
-  ${r?.stderr?`<div class="terminal-error"><strong>stderr:</strong><pre class="code-output">${safe(r.stderr)}</pre></div>`:""}
-  ${r?.executionError?`<div class="terminal-error"><strong>Exception:</strong> ${safe(r.executionError)}${r.traceback?`<details class="mt-12"><summary>Show Python traceback</summary><pre class="code-output">${safe(r.traceback)}</pre></details>`:""}</div>`:""}
-  </div><p class="card-caption mt-12">The console accepts any number of <span class="mono">input()</span> requests. For <span class="mono">sys.stdin.read()</span>, supply all data in Optional Input Data before running.</p></div>
   ${renderSmartDebugger()}
   <div class="card"><div class="panel-head"><span class="stat-ico teal">✦</span><div><h3>Debugger explanation</h3><p>Rule-based guidance · no API key</p></div></div>
   ${r?`<div class="callout"><strong>${r.inputRequired?"Waiting for keyboard input":r.executionError?"Suggested next step":"No runtime exception detected"}</strong><p>${safe(r.inputRequired?"Type a value in the Interactive Console and press Enter to continue. Each input is replayed to produce the next prompt or final result.":r.executionError?diagnose(r.executionError):"The script executed without a reported exception. If the output is incorrect, compare it with a known expected result or switch to Practice for unit-tested exercises.")}</p></div>`:
@@ -223,7 +218,29 @@ function renderDebugger(){
   <div class="card"><h3 class="card-title">Try an error example</h3><div class="grid mt-12">
   ${[["NameError","print(missing_value)"],["ZeroDivisionError","items = []\nprint(10 / len(items))"],["IndexError","data = [1, 2]\nprint(data[5])"],["SyntaxError","for n in range(4)\n    print(n)"]].map(([name,code],i)=>`<button class="challenge-card" data-action="sample-error" data-sample="${i}"><span class="stat-ico orange">⌁</span><span class="small"><strong>${name}</strong></span><span class="challenge-arrow">→</span></button>`).join("")}
   </div></div>
- </div></div>`;
+ </div></div>
+ ${renderCompilerDrawer()}`;
+}
+function renderCompilerDrawer(){
+ if(!state.consoleOpen)return '';
+ const result=state.freeResult;
+ const status=state.busy?'RUNNING':result?.inputRequired?'AWAITING INPUT':result?.executionError?'ERROR':result?'FINISHED':'RUNNING';
+ return `<section id="compiler-drawer" class="compiler-drawer" aria-label="Python terminal" role="region">
+  <div class="drawer-header"><div class="drawer-heading"><span class="terminal-light"></span><span class="drawer-title">TERMINAL</span><span class="drawer-divider">/</span><span class="drawer-filename">python · main.py</span></div>
+    <div class="drawer-actions">${pill(status,result?.inputRequired?'warn':status==='FINISHED'?'success':'ink')}
+      ${state.freeSession?`<button class="drawer-icon-btn" data-action="stop-free" title="Stop execution" aria-label="Stop execution">■</button>`:''}
+      <button class="drawer-icon-btn" data-action="clear-console" title="Clear terminal" aria-label="Clear terminal">⌫</button>
+      <button class="drawer-icon-btn" data-action="hide-console" title="Hide terminal" aria-label="Hide terminal">×</button>
+    </div></div>
+  <div class="drawer-scrollback" id="terminal-scrollback">
+    <pre class="drawer-output" id="terminal-output" aria-live="polite">${result?safe(result.stdout|| (state.busy?'Running Python…':'(No output printed)')):'Running Python…'}</pre>
+    ${result?.stderr?`<pre class="drawer-stderr">${safe(result.stderr)}</pre>`:''}
+    ${result?.executionError?`<div class="drawer-error"><b>${safe(result.executionError)}</b>${result.traceback?`<details><summary>Show Python traceback</summary><pre>${safe(result.traceback)}</pre></details>`:''}</div>`:''}
+    ${result?.inputRequired?`<div class="drawer-input-wrap"><div class="drawer-input-label"><span data-no-translate>${safe(result.inputPrompt||'Program is waiting for input')}</span> <span class="drawer-input-instructions">Type your value and press Enter</span></div>
+      <div class="drawer-input-row"><span class="terminal-chevron">›</span><input id="terminal-input" type="text" autocomplete="off" spellcheck="false" aria-label="Python input value" placeholder="Enter a number or text"/><button class="btn btn-primary btn-sm" data-action="send-console-input">Enter ↵</button></div></div>`:''}
+  </div>
+  <div class="drawer-status"><span>${result?.inputRequired?'⌨ Python is waiting for input':state.busy?'◌ Python is running':result?.executionError?'✕ Execution failed':result?'✓ Program finished':'◌ Starting interpreter'}</span><span>Python 3 · Browser runtime</span></div>
+ </section>`;
 }
 function renderCustomTests(){
  const results=state.customResults,passed=results.filter(r=>r.passed).length;
@@ -341,7 +358,8 @@ function render(){
   const freeEditor=el("#free-editor");
   if(freeEditor)wireEditor(freeEditor,"#free-gutter",()=>{state.freeCode=freeEditor.value;state.freeResult=null;state.customResults=[];state.reviewFindings=null;state.aiResult="";storageWrite();},performFreeRun);
   if(freeEditor&&typeof window!=="undefined")void enhancePythonEditor("free-editor",value=>{state.freeCode=value;state.freeResult=null;state.customResults=[];state.reviewFindings=null;state.aiResult="";storageWrite();},performFreeRun);
-  el("#stdin-editor")?.addEventListener("input",event=>{state.freeInput=event.target.value;state.freeResult=null;storageWrite();});
+  el("#stdin-editor")?.addEventListener("input",event=>{state.freeInput=event.target.value;state.usePreloadedStdin=Boolean(state.freeInput);state.freeResult=null;storageWrite();});
+  el("#use-preloaded-stdin")?.addEventListener("change",event=>{state.usePreloadedStdin=event.target.checked;storageWrite();});
   document.querySelectorAll('[data-case-id][data-case-field]').forEach(node=>node.addEventListener('input',event=>{
    const item=state.customCases.find(c=>String(c.id)===event.target.dataset.caseId);
    if(item&&['stdin','expected'].includes(event.target.dataset.caseField)){
@@ -349,7 +367,8 @@ function render(){
    }
   }));
   el("#terminal-input")?.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();void supplyConsoleInput();}});
-  if(state.freeResult?.inputRequired){el("#terminal-input")?.focus();}
+  if(state.consoleOpen){const viewport=el("#terminal-scrollback");if(viewport&&typeof viewport.scrollHeight==="number")viewport.scrollTop=viewport.scrollHeight;}
+  if(state.freeResult?.inputRequired&&state.consoleOpen){el("#terminal-input")?.focus();}
  }
 }
 let worker=null,sequence=0,workerReady=false;
@@ -482,7 +501,8 @@ async function performFreeRun(){
  if(state.busy)return;
  cancelFreeRun();
  const token=freeRunToken;
- state.freeSession={code:state.freeCode,stdin:initialStdin(state.freeInput),requests:0};
+ state.freeSession={code:state.freeCode,stdin:state.usePreloadedStdin?initialStdin(state.freeInput):"",requests:0};
+ state.consoleOpen=true;
  state.freeResult=null;
  notify("Starting Python... If more input is needed, the console will ask you.");
  await executeFreeSession(token);
@@ -539,16 +559,18 @@ document.addEventListener("click",event=>{
   case "run-custom":void runCustomTests();return;
   case "review-local":runLocalReview();return;
   case "review-ai":void runAIReview();return;
+  case "show-console":state.consoleOpen=true;render();return;
+  case "hide-console":state.consoleOpen=false;render();return;
   case "send-console-input":void supplyConsoleInput();return;
   case "stop-free":cancelFreeRun();state.freeResult={tests:[],stdout:state.freeResult?.stdout||"",executionError:"Execution stopped by user."};render();notify("Python execution stopped.");return;
-  case "clear-console":cancelFreeRun();state.freeResult=null;render();return;
-  case "reset-free":if(confirm("Restore the demo script?")){cancelFreeRun();state.freeCode=DEFAULT_CODE;state.freeResult=null;storageWrite();render();}return;
+  case "clear-console":cancelFreeRun();state.freeResult=null;state.consoleOpen=false;render();return;
+  case "reset-free":if(confirm("Restore the demo script?")){cancelFreeRun();state.freeCode=DEFAULT_CODE;state.freeResult=null;state.consoleOpen=false;storageWrite();render();}return;
   case "download-free":downloadText(state.freeCode,"main.py","text/x-python;charset=utf-8");notify("Python file downloaded.");return;
   case "copy-free":{const code=state.freeCode;if(navigator.clipboard?.writeText){navigator.clipboard.writeText(code).then(()=>notify("Code copied."),()=>notify("Clipboard unavailable.",true));}else{notify("Clipboard requires HTTPS.",true);}return;}
-  case "sample-error":state.freeCode=SAMPLES[Number(clickable.dataset.sample)]||DEFAULT_CODE;state.freeResult=null;storageWrite();render();return;
-  case "sample-add":cancelFreeRun();state.freeCode='A = int(input("Enter A: "))\nB = int(input("Enter B: "))\nprint("A + B =", A + B)';state.freeInput="10\n20";state.freeResult=null;storageWrite();render();notify("A + B example loaded with two input values.");return;
-  case "sample-loop":cancelFreeRun();state.freeCode='n = int(input("How many numbers? "))\ntotal = 0\nfor i in range(n):\n    value = int(input(f"Number {i+1}: "))\n    total += value\nprint("Sum:", total)';state.freeInput="";state.freeResult=null;storageWrite();render();notify("Interactive loop sample loaded. Press Run Code to enter inputs.");return;
-  case "sample-three":cancelFreeRun();state.freeCode='A = int(input("Enter A: "))\nB = int(input("Enter B: "))\nC = int(input("Enter C: "))\nprint("Maximum:", max(A, B, C))\nprint("Minimum:", min(A, B, C))\nprint("Average:", (A + B + C) / 3)';state.freeInput="15\n30\n45";state.freeResult=null;storageWrite();render();notify("Three-number example and its three inputs loaded.");return;
+  case "sample-error":cancelFreeRun();state.freeCode=SAMPLES[Number(clickable.dataset.sample)]||DEFAULT_CODE;state.freeInput="";state.usePreloadedStdin=false;state.freeResult=null;state.consoleOpen=false;storageWrite();render();return;
+  case "sample-add":cancelFreeRun();state.freeCode='A = int(input("Enter A: "))\nB = int(input("Enter B: "))\nprint("A + B =", A + B)';state.freeInput="";state.usePreloadedStdin=false;state.freeResult=null;state.consoleOpen=false;storageWrite();render();notify("A + B example loaded. Press Run Code, then enter both values in the terminal.");return;
+  case "sample-loop":cancelFreeRun();state.freeCode='n = int(input("How many numbers? "))\ntotal = 0\nfor i in range(n):\n    value = int(input(f"Number {i+1}: "))\n    total += value\nprint("Sum:", total)';state.freeInput="";state.usePreloadedStdin=false;state.freeResult=null;state.consoleOpen=false;storageWrite();render();notify("Interactive loop sample loaded. Press Run Code to enter inputs.");return;
+  case "sample-three":cancelFreeRun();state.freeCode='A = int(input("Enter A: "))\nB = int(input("Enter B: "))\nC = int(input("Enter C: "))\nprint("Maximum:", max(A, B, C))\nprint("Minimum:", min(A, B, C))\nprint("Average:", (A + B + C) / 3)';state.freeInput="";state.usePreloadedStdin=false;state.freeResult=null;state.consoleOpen=false;storageWrite();render();notify("Three-number example loaded. Press Run Code, then enter values in the terminal.");return;
   case "export-csv":exportCsv();return;
   case "clear-history":if(confirm("Delete all recorded practice history from this browser? This cannot be undone.")){state.history=[];storageWrite();render();notify("Progress records cleared.");}return;
  }

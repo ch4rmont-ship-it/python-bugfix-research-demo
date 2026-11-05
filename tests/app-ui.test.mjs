@@ -40,17 +40,20 @@ test('app initially renders dashboard',()=>{
  assert.match(screen.innerHTML,/Python Debug Lab/);
 });
 
-test('compiler opens with an editor, stdin and interactive console',()=>{
+test('compiler opens with editor but no terminal before Run Code',()=>{
  click({page:'debugger'});
  assert.match(screen.innerHTML,/Online Python Compiler/);
  assert.match(screen.innerHTML,/id="free-editor"/);
  assert.match(screen.innerHTML,/id="stdin-editor"/);
- assert.match(screen.innerHTML,/Interactive console/);
+ assert.match(screen.innerHTML,/Advanced: preload standard input/);
+ assert.doesNotMatch(screen.innerHTML,/id=\"compiler-drawer\"/);
 });
 
 test('runner accepts interactive prompts and emits final output',async()=>{
  click({action:'free-run'});
+ assert.match(screen.innerHTML,/id=\"compiler-drawer\"/);
  await tick();
+ assert.match(screen.innerHTML,/AWAITING INPUT/);
  assert.match(screen.innerHTML,/id="terminal-input"/);
  terminalInput.value='10';
  click({action:'send-console-input'});
@@ -84,4 +87,25 @@ test('offline analysis renders findings without needing an API key',()=>{
  click({action:'review-local'});
  assert.match(screen.innerHTML,/No obvious issues found/);
  assert.match(screen.innerHTML,/LOCAL MODE/);
+});
+
+test('clear hides the drawer and a new run opens it again',async()=>{
+ click({page:'debugger'});
+ click({action:'clear-console'});
+ assert.doesNotMatch(screen.innerHTML,/id="compiler-drawer"/);
+ click({action:'free-run'});
+ assert.match(screen.innerHTML,/id="compiler-drawer"/);
+ await tick();
+ click({action:'clear-console'});
+ assert.doesNotMatch(screen.innerHTML,/id="compiler-drawer"/);
+});
+
+test('quick A + B example keeps the input terminal on demand',async()=>{
+ click({page:'debugger'});
+ click({action:'sample-add'});
+ assert.match(screen.innerHTML,/Enter A:/);
+ assert.doesNotMatch(screen.innerHTML,/id="compiler-drawer"/);
+ click({action:'free-run'});
+ await tick();
+ assert.match(screen.innerHTML,/id="terminal-input"/);
 });

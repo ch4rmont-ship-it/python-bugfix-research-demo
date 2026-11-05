@@ -405,6 +405,32 @@ Object.assign(pairs,{
 "The local reviewer did not detect a known pattern. This is not proof of correctness.":["本地检测未发现已知错误模式，但不能证明程序一定正确。","Local шинжилгээ нийтлэг алдаа олоогүй. Энэ нь код бүрэн зөв гэдгийн баталгаа биш."],
 "Add custom tests with edge cases and inspect actual outputs.":["添加包含边界情况的自定义测试并检查输出。","Заагийн тохиолдолтой тест нэмж бодит гаралтаа шалга."]
 });
+Object.assign(pairs,{
+"Advanced: preload standard input (optional)":["高级：预先输入标准输入（可选）","Нэмэлт: стандарт оролтыг урьдчилан өгөх"],
+"Quick examples":["快捷示例","Бэлэн жишээнүүд"],
+"Three numbers":["三个数字","Гурван тоо"],
+"Input loop":["循环输入","Давталтын оролт"],
+"Open Terminal":["打开终端","Terminal нээх"],
+"TERMINAL":["终端","ТЕРМИНАЛ"],
+"Stop execution":["停止运行","Ажиллуулалтыг зогсоох"],
+"Clear terminal":["清空终端","Terminal цэвэрлэх"],
+"Hide terminal":["隐藏终端","Terminal нуух"],
+"Running Python…":["正在运行 Python…","Python ажиллаж байна…"],
+"Program is waiting for input":["程序正在等待输入","Програм оролт хүлээж байна"],
+"Type your value and press Enter":["输入值后按 Enter","Утгаа бичээд Enter дар"],
+"Enter a number or text":["输入数字或文字","Тоо эсвэл текст оруулах"],
+"Python is waiting for input":["Python 正在等待输入","Python оролт хүлээж байна"],
+"Python is running":["Python 正在运行","Python ажиллаж байна"],
+"Execution failed":["运行失败","Ажиллуулахад алдаа гарлаа"],
+"Program finished":["程序已结束","Програм дууслаа"],
+"Starting interpreter":["正在启动解释器","Python орчныг эхлүүлж байна"],
+"A + B example loaded. Press Run Code, then enter both values in the terminal.":["已加载 A+B 示例。按“运行代码”，然后在终端中输入两个数。","A+B жишээг ачааллаа. Код ажиллуулаад хоёр утгаа terminal-д оруул."],
+"Three-number example loaded. Press Run Code, then enter values in the terminal.":["已加载三个数字示例。点击运行，然后在终端输入数值。","Гурван тооны жишээг ачааллаа. Код ажиллуулаад утгуудаа terminal-д оруул."],
+"The console accepts any number of input() requests. For sys.stdin.read(), supply all data in Optional Input Data before running.":["终端可多次输入 input()。使用 sys.stdin.read() 时请预先填写可选标准输入。","Terminal олон input()-ийг дэмжинэ. sys.stdin.read() ашиглавал нэмэлт stdin-д өгөгдлөө урьдчилан бич."]
+});
+Object.assign(pairs,{
+"Use preloaded stdin instead of entering values in the terminal":["使用预先输入的数据，不在终端逐项输入","Terminal-д гараас оруулахын оронд урьдчилан өгсөн stdin ашиглах"]
+});
 export const translations=Object.fromEntries(Object.entries(pairs).map(([en,[zh,mn]])=>[en,{zh,mn}]));
 export function translateText(text,language){
  if(language==='en')return text;

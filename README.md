@@ -118,3 +118,13 @@ An optional Vercel endpoint (`api/debug.js`) implements AI analysis using the Op
 - `OPENAI_MODEL=gpt-4.1-mini`: optional override of the default model.
 
 Once configured, the **Analyze with AI** button activates and submits only the selected source plus short error/test context when clicked. The server sends a capped prompt to the model and does not request storage (`store:false`). **Before enabling AI on a public site, implement authentication plus durable rate limiting and abuse controls**, because origin checking alone cannot stop automated API abuse or prevent unexpected token charges. The current public site intentionally leaves AI disabled.
+
+## On-demand Python input terminal
+
+The **Python Compiler** initially displays only the source editor and a compact **Advanced: preload standard input (optional)** disclosure. Clicking **Run Code** automatically opens a VS Code-inspired **bottom terminal drawer**, which shows program stdout and any exception/traceback. If the program calls built-in `input()` without enough preloaded values, the terminal displays an inline input box and focuses it. Enter a value and press **Enter**; the program continues to the next prompt or prints its final output. Blank strings are valid input values.
+
+The terminal's **×** button hides it without stopping an input session, and **Open Terminal** restores the same pending input/output. **■ Stop** cancels a running session; **Clear terminal** resets and hides the panel. `Ctrl/Cmd+Enter` inside Monaco/textarea opens the same terminal and runs the script. Quick examples deliberately leave optional stdin blank to demonstrate interactive entry. The advanced stdin field remains available for batch input and `sys.stdin.read()`.
+
+**Implementation note:** the Pyodide Worker replays the source with collected input on each new prompt instead of suspending a native interactive process. Therefore this mechanism is appropriate for deterministic learning exercises, but not equivalent to a true persistent native Python process when the code has nondeterministic or external side effects.
+
+Previous versions may have saved input in the browser. **Interactive terminal mode is now the default**, even if old stdin data exists. To feed batch data, expand **Advanced: preload standard input**, check **Use preloaded stdin**, and enter your lines; typing new data automatically enables batch mode. Click a quick example to return to interactive mode.
