@@ -13,7 +13,7 @@ print(factorial(5))`;
 const safe = value => String(value ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const el = query=>document.querySelector(query);
 function storageRead() {try{return JSON.parse(localStorage.getItem(KEY))||{};}catch{return {};}}
-function storageWrite(){try{localStorage.setItem(KEY,JSON.stringify({taskId:state.taskId,variant:state.variant,code:state.code,freeCode:state.freeCode,history:state.history}));}catch{notify("Storage unavailable: export your records to keep them.",true);}}
+function storageWrite(){try{localStorage.setItem(KEY,JSON.stringify({taskId:state.taskId,variant:state.variant,code:state.code,freeCode:state.freeCode,freeInput:state.freeInput,history:state.history}));}catch{notify("Storage unavailable: export your records to keep them.",true);}}
 const saved = storageRead();
 const state = {
  page:"dashboard",
@@ -21,6 +21,7 @@ const state = {
  variant:Number.isInteger(saved.variant)&&saved.variant>=0&&saved.variant<5?saved.variant:0,
  code:saved.code||tasks[0].variants[0].code,
  freeCode:saved.freeCode||DEFAULT_CODE,
+ freeInput:typeof saved.freeInput==="string"?saved.freeInput:"",
  history:Array.isArray(saved.history)?saved.history:[],
  hints:0, result:null, freeResult:null, busy:false, working:"", revealed:false,
  tool:"explanation"
@@ -124,6 +125,7 @@ const DIAG={
  SyntaxError:"Python could not parse the code. Check colons after def/if/for statements, brackets, quotations, and invalid operators.",
  IndentationError:"Indentation is inconsistent. All statements in the same Python block must align; use four spaces per level.",
  NameError:"A variable or function name was used before it was defined. Verify spelling, capitalization and execution order.",
+ EOFError:"The script needs more input. Enter one value on each line in the Standard Input (stdin) box, matching every input() call.",
  TypeError:"An operation received an incompatible type or number of arguments. Inspect the involved values and function signature.",
  IndexError:"The code accessed a list index that does not exist. Check the list length and off-by-one loop conditions.",
  ZeroDivisionError:"A division uses zero as the divisor. Handle the empty list or zero denominator before dividing.",
@@ -143,7 +145,8 @@ function renderDebugger(){
  +`<div class="editor-layout">
  <div class="grid" style="align-items:start">
   <div class="card editor-card"><div class="editor-bar"><span class="editor-file"><span class="editor-dot"></span>my_python_script.py</span>${pill("Free-form Python")}</div>
-  <textarea id="free-editor" class="editor-textarea" style="min-height:425px" spellcheck="false" aria-label="Custom Python code">${safe(state.freeCode)}</textarea>
+  <textarea id="free-editor" class="editor-textarea" style="min-height:360px" spellcheck="false" aria-label="Custom Python code">${safe(state.freeCode)}</textarea>
+  <div class="stdin-panel"><div class="flex-between"><label class="label" for="stdin-editor">STANDARD INPUT (stdin)</label>${pill("input() supported","success")}</div><textarea id="stdin-editor" class="input stdin-textarea mono" rows="3" placeholder="10&#10;20" spellcheck="false" aria-label="Input values, one per line">${safe(state.freeInput)}</textarea><p class="card-caption">One value per line. Every Python <span class="mono">input()</span> reads the next line. Example: type 10 on line 1 and 20 on line 2.</p><button class="btn btn-soft btn-sm mt-12" data-action="sample-add">+ Load A + B input example</button></div>
   <div class="editor-footer"><button class="btn btn-primary" data-action="free-run" ${state.busy?"disabled":""}>${state.busy?"Executing…":"▷ Execute Python"}</button><button class="btn btn-outline" data-action="copy-free">Copy code</button><span class="xs muted">No account · browser-only execution</span></div></div>
   <div class="callout"><strong>How this works:</strong> Python runs in a disposable Web Worker using Pyodide (WebAssembly). Exceptions are classified with deterministic guidance. General semantic/logic correctness cannot be established without test cases and an expected result.</div>
  </div>
@@ -220,6 +223,7 @@ function render(){
   el("#variant-picker")?.addEventListener("change",event=>selectTask(state.taskId,Number(event.target.value)));
  }else if(state.page==="debugger"){
   el("#free-editor")?.addEventListener("input",event=>{state.freeCode=event.target.value;state.freeResult=null;storageWrite();});
+  el("#stdin-editor")?.addEventListener("input",event=>{state.freeInput=event.target.value;state.freeResult=null;storageWrite();});
  }
 }
 let worker=null,sequence=0,workerReady=false;
@@ -272,7 +276,7 @@ async function performFreeRun(){
  if(state.busy)return;
  const code=state.freeCode;state.busy=true;render();notify("Executing Python in a browser worker…");
  try{
-  state.freeResult=await runPython({mode:"execute",code,tests:[]});
+  state.freeResult=await runPython({mode:"execute",code,stdin:state.freeInput,tests:[]});
   notify(state.freeResult.executionError?"Python returned an exception.":"Execution complete.",!!state.freeResult.executionError);
  }catch(e){state.freeResult={tests:[],stdout:"",executionError:e.message};notify(e.message,true);}
  finally{state.busy=false;render();}
@@ -310,6 +314,7 @@ document.addEventListener("click",event=>{
   case "reset-free":if(confirm("Restore the demo script?")){state.freeCode=DEFAULT_CODE;state.freeResult=null;storageWrite();render();}return;
   case "copy-free":{const code=state.freeCode;if(navigator.clipboard?.writeText){navigator.clipboard.writeText(code).then(()=>notify("Code copied."),()=>notify("Clipboard unavailable.",true));}else{notify("Clipboard requires HTTPS.",true);}return;}
   case "sample-error":state.freeCode=SAMPLES[Number(clickable.dataset.sample)]||DEFAULT_CODE;state.freeResult=null;storageWrite();render();return;
+  case "sample-add":state.freeCode='A = int(input("Enter A: "))\nB = int(input("Enter B: "))\nprint("A + B =", A + B)';state.freeInput="10\n20";state.freeResult=null;storageWrite();render();notify("A + B example loaded with two input values.");return;
   case "export-csv":exportCsv();return;
   case "clear-history":if(confirm("Delete all recorded practice history from this browser? This cannot be undone.")){state.history=[];storageWrite();render();notify("Progress records cleared.");}return;
  }

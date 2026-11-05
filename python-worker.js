@@ -14,8 +14,10 @@ async function execute(request){
  engine.globals.set("__pylab_payload",JSON.stringify(request));
  try{
   const output=await engine.runPythonAsync(`
-import json, io, contextlib
+import json, io, contextlib, sys
 payload = json.loads(__pylab_payload)
+previous_stdin = sys.stdin
+sys.stdin = io.StringIO(payload.get("stdin", ""))
 namespace = {"__name__": "__main__"}
 capture = io.StringIO()
 report = {"tests": [], "stdout": "", "executionError": None}
@@ -51,6 +53,7 @@ try:
                 })
 except Exception as exc:
     report["executionError"] = type(exc).__name__ + ": " + str(exc)
+sys.stdin = previous_stdin
 report["stdout"] = capture.getvalue()[:6000]
 json.dumps(report, ensure_ascii=False)
 `);

@@ -14,7 +14,7 @@ A polished, **fully working Python debugging demo website** for practising progr
 | Error explanation | Python exception classification and test-driven logic error explanation |
 | Guided hints | Three levels: input/example → concept → detailed repair |
 | Reference fix | Unlock and apply a verified reference implementation after running tests |
-| Error Detective | Run your own Python script, inspect output, exceptions and common diagnostics |
+| Error Detective | Run your own Python script, supply standard input (`input()`), inspect output, exceptions and common diagnostics |
 | Analytics | Saved pass/fail attempts, per-topic progress chart, CSV export, clear history |
 | Design | Responsive desktop and mobile layout |
 
@@ -62,7 +62,7 @@ tests/                 Challenge consistency tests
 1. Open **Debug playground**, pick *Sum Positive Values*, and click **Run tests**. The deliberately wrong condition fails.
 2. Click **Reveal next hint** one to three times to reveal progressively more specific guidance.
 3. Edit the inequality (or click **Apply reference fix**) and run again to pass the tests.
-4. Switch to **Error Detective**, run one of the provided exception examples, and read the diagnosis.
+4. Switch to **Error Detective**. Click **Load A + B input example** and notice that the Standard Input box contains `10` and `20` on separate lines. Execute the code: the output will include `A + B = 30`. Edit both values and run again. You can also run the provided exception examples.
 5. Open **Analytics** to see progress and download CSV.
 
 ## Privacy and limitations
