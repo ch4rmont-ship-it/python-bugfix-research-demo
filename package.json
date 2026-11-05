@@ -1,0 +1,11 @@
+{
+  "name": "python-debug-lab",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Interactive Python bug fixing platform with browser-executed code, unit tests, graduated hints and progress analytics.",
+  "scripts": {
+    "test": "node --test tests/*.test.mjs",
+    "start": "python3 -m http.server 5173"
+  }
+}
