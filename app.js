@@ -1,5 +1,6 @@
 import {tasks,totalVariants} from "./tasks.js";
 import {SOLUTIONS} from "./solutions.js";
+import {LANGUAGE_KEY,supportedLanguages,translateText} from "./i18n.js";
 
 const KEY = "pylab-full-demo-v2";
 const DEFAULT_CODE = `def factorial(n):
@@ -15,6 +16,56 @@ const el = query=>document.querySelector(query);
 function storageRead() {try{return JSON.parse(localStorage.getItem(KEY))||{};}catch{return {};}}
 function storageWrite(){try{localStorage.setItem(KEY,JSON.stringify({taskId:state.taskId,variant:state.variant,code:state.code,freeCode:state.freeCode,freeInput:state.freeInput,history:state.history}));}catch{notify("Storage unavailable: export your records to keep them.",true);}}
 const saved = storageRead();
+function initialLanguage(){
+ try {const language=localStorage.getItem(LANGUAGE_KEY);return supportedLanguages.includes(language)?language:'en';}
+ catch{return 'en';}
+}
+let language=initialLanguage();
+const originalTextNodes=new WeakMap();
+const originalAttributes=new WeakMap();
+function localizedText(text){
+ const normalized=String(text).trim();
+ if(!normalized)return text;
+ // Keep nonverbal leading icons and control glyphs intact.
+ const match=/^([↺▷✧✦↓+■✓→⌁]\s*)(.+)$/.exec(normalized);
+ const translated=match?match[1]+translateText(match[2].trim(),language):translateText(normalized,language);
+ if(translated===normalized)return text;
+ const lead=text.match(/^\s*/)?.[0]||'';
+ const tail=text.match(/\s*$/)?.[0]||'';
+ return lead+translated+tail;
+}
+function translateDOM(){
+ if(typeof document.createTreeWalker!=='function')return;
+ // Translate only UI copy, never user Python source, raw output, or code snippets.
+ const nodes=['#sidebar','.topbar','.workspace-tabs','#app','.footer'];
+ for(const selector of nodes){
+  const root=document.querySelector(selector);
+  if(!root)continue;
+  const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);
+  const items=[];
+  while(walker.nextNode())items.push(walker.currentNode);
+  for(const item of items){
+   const parent=item.parentElement;
+   if(!parent||parent.closest('textarea,pre,code,.code-surface,.compiler-terminal,.mono,.editor-file,.editor-textarea,.line-gutter,[data-no-translate]'))continue;
+   const base=originalTextNodes.has(item)?originalTextNodes.get(item):item.nodeValue;
+   if(!originalTextNodes.has(item))originalTextNodes.set(item,base);
+   item.nodeValue=localizedText(base);
+  }
+  for(const input of root.querySelectorAll('input[placeholder],textarea[placeholder],button[title]')){
+   for(const attr of ['placeholder','title']){
+    if(!input.hasAttribute(attr))continue;
+    let saved=originalAttributes.get(input);
+    if(!saved){saved={};originalAttributes.set(input,saved);}
+    if(!(attr in saved))saved[attr]=input.getAttribute(attr);
+    input.setAttribute(attr,localizedText(saved[attr]));
+   }
+  }
+ }
+ document.documentElement.lang=language==='zh'?'zh-CN':language;
+ const select=document.querySelector('#language-select');
+ if(select)select.value=language;
+}
+
 const state = {
  page:"dashboard",
  taskId:tasks.some(t=>t.id===saved.taskId)?saved.taskId:"sum",
@@ -38,7 +89,7 @@ const number= n => Number(n).toLocaleString("en-US");
 const dateLabel = iso => new Date(iso).toLocaleString("en-GB",{day:"numeric",month:"short",hour:"2-digit",minute:"2-digit"});
 const format = v=>typeof v==="string"?JSON.stringify(v):JSON.stringify(v)??"None";
 let toastTimeout;
-function notify(message,error=false){const e=el("#toast");e.textContent=message;e.className=`toast show${error?" error":""}`;clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>e.classList.remove("show"),4300);}
+function notify(message,error=false){const e=el("#toast");e.textContent=translateText(message,language);e.className=`toast show${error?" error":""}`;clearTimeout(toastTimeout);toastTimeout=setTimeout(()=>e.classList.remove("show"),4300);}
 function title(kicker,heading,sub,action=""){return `<div class="page-head"><div><div class="eyebrow">${safe(kicker)}</div><h1 class="page-title">${safe(heading)}</h1><p class="page-subtitle">${safe(sub)}</p></div>${action}</div>`;}
 function button(text,action,style="btn-primary",extra=""){return `<button class="btn ${style}" data-action="${action}" ${extra}>${text}</button>`;}
 function section(heading,action=""){return `<div class="section-bar"><h2 class="section-title">${heading}</h2>${action}</div>`;}
@@ -117,9 +168,9 @@ function hintBox(title,content){return `<div class="hint-card"><strong>${safe(ti
 function explainResult(r,t){
  if(r.executionError)return diagnose(r.executionError);
  const f=(r.tests||[]).filter(x=>!x.passed);
- if(!f.length)return "Your function passed every supplied test. Great! Note that a passing test suite increases confidence, but does not formally prove correctness for every possible input.";
+ if(!f.length)return translateText("Your function passed every supplied test. Great! Note that a passing test suite increases confidence, but does not formally prove correctness for every possible input.",language);
  if(f.some(x=>x.error))return diagnose(f.find(x=>x.error).error);
- const one=f[0];return `The function returned ${format(one.actual)} while the expected result is ${format(one.expected)}. The program runs, so this looks like a logic error. Check loop boundaries, branching conditions, accumulators, or return values.`;
+ const one=f[0];return language==="zh"?`函数返回 ${format(one.actual)}，但预期结果为 ${format(one.expected)}。程序可以运行，因此可能是逻辑错误。检查循环边界、条件、累加器和返回值。`:language==="mn"?`Функц ${format(one.actual)} буцаасан боловч хүлээгдсэн нь ${format(one.expected)}. Код ажиллаж байгаа тул логик алдаа байж магадгүй. Давталтын хязгаар, нөхцөл, хуримтлагч, буцаах утгыг шалга.`:`The function returned ${format(one.actual)} while the expected result is ${format(one.expected)}. The program runs, so this looks like a logic error. Check loop boundaries, branching conditions, accumulators, or return values.`;
 }
 const DIAG={
  SyntaxError:"Python could not parse the code. Check colons after def/if/for statements, brackets, quotations, and invalid operators.",
@@ -136,7 +187,7 @@ const DIAG={
  TabError:"Tabs and spaces were mixed in indentation. Use a consistent indentation style (four spaces).",
  ModuleNotFoundError:"The requested module is unavailable in this browser Python environment."
 };
-function diagnose(error){const value=String(error||"Unknown error");const name=value.match(/(?:^|\b)([A-Za-z]+Error)\b/)?.[1]||"Runtime error";return `${name}: ${DIAG[name]||"Read the exception, inspect the referenced operation and try a smaller test case."} — ${value.slice(0,260)}`;}
+function diagnose(error){const value=String(error||"Unknown error");const name=value.match(/(?:^|\b)([A-Za-z]+Error)\b/)?.[1]||"Runtime error";return `${name}: ${translateText(DIAG[name]||"Read the exception, inspect the referenced operation and try a smaller test case.",language)} — ${value.slice(0,260)}`;}
 
 function renderDebugger(){
  const r=state.freeResult;
@@ -255,6 +306,7 @@ function render(){
  document.querySelectorAll("#nav [data-page], .workspace-tabs [data-page]").forEach(b=>b.classList.toggle("active",b.dataset.page===state.page));
  const titles={dashboard:"Overview",practice:"Debug playground",debugger:"Python Compiler",analytics:"Analytics",guide:"Guide"};
  el("#page-crumb").textContent=titles[state.page]||"Overview";
+ translateDOM();
  if(state.page==="practice"){
   const editor=el("#practice-editor");
   if(editor)wireEditor(editor,"#practice-gutter",()=>{state.code=editor.value;state.result=null;state.revealed=false;storageWrite();},performPracticeRun);
@@ -381,6 +433,13 @@ function downloadText(content,name,type){
  const anchor=document.createElement("a");anchor.href=url;anchor.download=name;document.body.appendChild(anchor);anchor.click();anchor.remove();
  setTimeout(()=>URL.revokeObjectURL(url),1000);
 }
+document.querySelector('#language-select')?.addEventListener('change',event=>{
+ const next=event.target.value;
+ if(!supportedLanguages.includes(next))return;
+ language=next;
+ try{localStorage.setItem(LANGUAGE_KEY,language);}catch{}
+ render();
+});
 document.addEventListener("click",event=>{
  const clickable=event.target.closest("button[data-page],button[data-action]");
  if(!clickable)return;

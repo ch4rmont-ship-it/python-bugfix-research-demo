@@ -17,6 +17,11 @@ A polished, **fully working Python debugging demo website** with a VS Code-inspi
 | Online Python Compiler | Edit your Python code; run it, supply any number of values via interactive `input()` prompts or multiline stdin, inspect output and errors |
 | Analytics | Saved pass/fail attempts, per-topic progress chart, CSV export, clear history |
 | Design | VS Code-inspired dark editor, file tabs, line numbers, cursor location, status bar, responsive desktop and mobile layout |
+| Internationalization | English / 简体中文 / Монгол switcher in the header; saves preference in localStorage; translates lessons, hints, error guidance, and UI without altering Python source or console output |
+
+## Language switching
+
+Use the **Language** selector in the top-right corner to choose English, 中文, or Монгол. Your choice persists on this browser. User-written Python code, Python exception identifiers and raw stdout are not translated. 25 challenges, 71 unique hint strings, interface navigation, and rule-based explanations have three-language coverage.
 
 ## Run the site
 
