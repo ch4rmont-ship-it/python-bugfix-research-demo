@@ -85,3 +85,36 @@ tests/                 Challenge consistency tests
 
 Built for the USTB AI and Innovative Design coursework demo.
 
+
+## Phase 1 — Monaco, custom tests, AI-ready debugger
+
+### Monaco Editor
+
+Both the challenge editor and free-form Python Compiler now attempt to load **Monaco Editor 0.52.2** on demand. It offers Python syntax highlighting, bracket matching, auto indentation, Ctrl/Cmd+Enter to run, and an improved editor experience. This static project uses the pinned legacy AMD distribution so it does not need a bundler. If jsDelivr is blocked or Monaco fails to initialize, the existing editable textarea remains operational. The first load requires internet access.
+
+### Custom Test Cases
+
+Open **Python Compiler → Custom Test Cases**. Add up to **10** input/expected-output examples and click **Run Custom Tests**. They are executed separately in Pyodide. Test output is compared exactly after normalizing platform line endings and ignoring trailing newlines. Unlike the interactive terminal, automated tests don't include `input()` prompts/echo in stdout.
+
+Example Python code:
+
+```python
+A = int(input())
+B = int(input())
+print(A + B)
+```
+
+Test 1: **Input** `10` (newline) `20`; **Expected Output** `30`. Test 2: **Input** `-5` (newline) `8`; **Expected Output** `3`. The displayed test results include PASS/FAIL, actual output, and errors. Cases persist in your browser; no server is needed.
+
+### AI Code Debugger
+
+The **Analyze locally** button is available immediately, no token required. This *deterministic, rule-based* checker inspects common mistakes, Python exceptions, traceback line numbers, and failed custom tests. It is **not** a machine-learning model and cannot verify arbitrary programs for correctness.
+
+An optional Vercel endpoint (`api/debug.js`) implements AI analysis using the OpenAI Responses API. By default it is **disabled**, so no code is sent to any model. To activate it later, configure the following **server-side Vercel environment variables** and redeploy:
+
+- `OPENAI_API_KEY`: a private API key, never committed to GitHub or shipped to the browser.
+- `AI_ENABLED=true`: explicit opt-in; absent by default.
+- `AI_ALLOWED_ORIGIN=https://python-debug-lab.vercel.app`: optional allowed browser origin (this is not authentication).
+- `OPENAI_MODEL=gpt-4.1-mini`: optional override of the default model.
+
+Once configured, the **Analyze with AI** button activates and submits only the selected source plus short error/test context when clicked. The server sends a capped prompt to the model and does not request storage (`store:false`). **Before enabling AI on a public site, implement authentication plus durable rate limiting and abuse controls**, because origin checking alone cannot stop automated API abuse or prevent unexpected token charges. The current public site intentionally leaves AI disabled.

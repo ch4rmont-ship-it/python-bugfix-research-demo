@@ -62,3 +62,26 @@ test('runner accepts interactive prompts and emits final output',async()=>{
  assert.match(screen.innerHTML,/Sum: 30/);
  assert.doesNotMatch(screen.innerHTML,/id="terminal-input"/);
 });
+
+test('Phase 1 compiler provides custom test case editor and review controls',()=>{
+ click({page:'debugger'});
+ assert.match(screen.innerHTML,/Custom Test Cases/);
+ assert.match(screen.innerHTML,/Run Custom Tests/);
+ assert.match(screen.innerHTML,/AI Code Debugger/);
+ assert.match(screen.innerHTML,/Analyze locally/);
+ assert.match(screen.innerHTML,/data-action="review-ai" disabled/);
+});
+
+test('adding a custom test case updates its UI without removing the first case',()=>{
+ click({page:'debugger'});
+ click({action:'add-case'});
+ assert.match(screen.innerHTML,/Case 1/);
+ assert.match(screen.innerHTML,/Case 2/);
+});
+
+test('offline analysis renders findings without needing an API key',()=>{
+ click({page:'debugger'});
+ click({action:'review-local'});
+ assert.match(screen.innerHTML,/No obvious issues found/);
+ assert.match(screen.innerHTML,/LOCAL MODE/);
+});

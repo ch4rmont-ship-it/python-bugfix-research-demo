@@ -1,5 +1,8 @@
 import {tasks,totalVariants} from "./tasks.js";
 import {SOLUTIONS} from "./solutions.js";
+import {disposeMonaco,enhancePythonEditor} from "./monaco-loader.js";
+import {reviewPython} from "./code-review.js";
+import {buildCaseResult,validateCases,defaultCases} from "./custom-tests.js";
 import {LANGUAGE_KEY,supportedLanguages,translateText} from "./i18n.js";
 
 const KEY = "pylab-full-demo-v2";
@@ -14,7 +17,7 @@ print(factorial(5))`;
 const safe = value => String(value ?? "").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const el = query=>document.querySelector(query);
 function storageRead() {try{return JSON.parse(localStorage.getItem(KEY))||{};}catch{return {};}}
-function storageWrite(){try{localStorage.setItem(KEY,JSON.stringify({taskId:state.taskId,variant:state.variant,code:state.code,freeCode:state.freeCode,freeInput:state.freeInput,history:state.history}));}catch{notify("Storage unavailable: export your records to keep them.",true);}}
+function storageWrite(){try{localStorage.setItem(KEY,JSON.stringify({taskId:state.taskId,variant:state.variant,code:state.code,freeCode:state.freeCode,freeInput:state.freeInput,customCases:state.customCases,history:state.history}));}catch{notify("Storage unavailable: export your records to keep them.",true);}}
 const saved = storageRead();
 function initialLanguage(){
  try {const language=localStorage.getItem(LANGUAGE_KEY);return supportedLanguages.includes(language)?language:'en';}
@@ -74,6 +77,8 @@ const state = {
  freeCode:saved.freeCode||DEFAULT_CODE,
  freeInput:typeof saved.freeInput==="string"?saved.freeInput:"",
  history:Array.isArray(saved.history)?saved.history:[],
+ customCases:Array.isArray(saved.customCases)&&saved.customCases.length&&saved.customCases.length<=10?saved.customCases.map(c=>({id:Number(c.id)||Date.now(),stdin:String(c.stdin||""),expected:String(c.expected||"")})):defaultCases.map(c=>({...c})),
+ customResults:[], customRunning:false, reviewFindings:null, aiAvailable:false, aiChecked:false, aiResult:"", aiError:"", aiBusy:false,
  hints:0, result:null, freeResult:null, freeSession:null, busy:false, working:"", revealed:false,
  tool:"explanation"
 };
@@ -148,7 +153,7 @@ function renderPractice(){
  <div class="editor-layout">
  <div class="grid" style="align-items:start">
    <div class="card editor-card"><div class="editor-bar"><span class="editor-file"><span class="editor-dot"></span>${safe(t.id)}_bug_${state.variant+1}.py</span>${pill("Python 3")}</div>
-   <div class="code-surface"><div class="line-gutter" id="practice-gutter" aria-hidden="true"></div><textarea id="practice-editor" class="editor-textarea" spellcheck="false" aria-label="Python editor" autocapitalize="off" autocomplete="off" autocorrect="off">${safe(state.code)}</textarea></div>
+   <div class="code-surface"><div class="monaco-mount" hidden></div><div class="line-gutter" id="practice-gutter" aria-hidden="true"></div><textarea id="practice-editor" class="editor-textarea" spellcheck="false" aria-label="Python editor" autocapitalize="off" autocomplete="off" autocorrect="off">${safe(state.code)}</textarea></div>
    <div class="editor-footer"><button class="btn btn-primary" data-action="practice-run" ${state.busy?"disabled":""}>${state.busy?"Running…":"▷ Run tests"}</button><button class="btn btn-outline" data-action="apply-reference" ${!state.result?"disabled title='Run the tests first'":""}>✧ Apply reference fix</button><span class="muted xs">${t.tests.length} test cases · code auto-saved</span></div></div>
    ${state.result?`<div class="card"><h3 class="card-title">What's happening?</h3><div class="callout mt-12">${safe(explainResult(state.result,t))}</div>${finished?`<p class="small" style="color:#10997b"><strong>✓ Good work!</strong> All ${t.tests.length} cases pass. Try another variation to build fluency.</p>`:`<p class="card-caption">The debugger uses test results and Python exceptions. It does not claim to be a generative AI service.</p>`}</div>`:""}
  </div>
@@ -196,9 +201,10 @@ function renderDebugger(){
  +`<div class="editor-layout">
  <div class="grid" style="align-items:start">
   <div class="card editor-card"><div class="editor-bar"><span class="editor-file"><span class="editor-dot"></span>my_python_script.py</span>${pill("Interactive Python")}</div>
-  <div class="code-surface"><div class="line-gutter" id="free-gutter" aria-hidden="true"></div><textarea id="free-editor" class="editor-textarea" style="min-height:360px" spellcheck="false" aria-label="Custom Python code" autocapitalize="off" autocomplete="off" autocorrect="off" ${state.freeSession?"readonly":""}>${safe(state.freeCode)}</textarea></div>
+  <div class="code-surface"><div class="monaco-mount" hidden></div><div class="line-gutter" id="free-gutter" aria-hidden="true"></div><textarea id="free-editor" class="editor-textarea" style="min-height:360px" spellcheck="false" aria-label="Custom Python code" autocapitalize="off" autocomplete="off" autocorrect="off" ${state.freeSession?"readonly":""}>${safe(state.freeCode)}</textarea></div>
   <div class="stdin-panel"><div class="flex-between"><label class="label" for="stdin-editor">OPTIONAL INPUT DATA (stdin)</label>${pill("Interactive input()","success")}</div><textarea id="stdin-editor" class="input stdin-textarea mono" rows="3" placeholder="10&#10;20" spellcheck="false" aria-label="Optional input values, one per line" ${state.freeSession?"readonly":""}>${safe(state.freeInput)}</textarea><p class="card-caption">Leave blank to enter each <span class="mono">input()</span> interactively in the console. Or paste as many lines as needed here before running.</p><button class="btn btn-soft btn-sm mt-12" data-action="sample-add">+ Load A + B input example</button> <button class="btn btn-outline btn-sm mt-12" data-action="sample-three">+ Load 3-number example</button> <button class="btn btn-outline btn-sm mt-12" data-action="sample-loop">+ Interactive loop demo</button></div>
   <div class="editor-footer"><button class="btn btn-primary" data-action="free-run" ${state.busy?"disabled":""}>${state.busy?"Executing…":state.freeSession?"↻ Restart program":"▷ Run Code"}</button>${state.freeSession?`<button class="btn btn-danger" data-action="stop-free">■ Stop</button>`:""}<button class="btn btn-outline" data-action="copy-free">Copy</button><button class="btn btn-outline" data-action="download-free">↓ .py</button><span class="xs muted">Python 3 · Browser runtime</span></div></div>
+  ${renderCustomTests()}
   <div class="callout"><strong>How this works:</strong> Uses Python via WebAssembly. When the console asks for input, type a value and press Enter; the current script is replayed with all collected inputs. No API key needed. Not all CPython packages or OS features are available.</div>
  </div>
  <div class="grid" style="align-items:start">
@@ -209,6 +215,7 @@ function renderDebugger(){
   ${r?.stderr?`<div class="terminal-error"><strong>stderr:</strong><pre class="code-output">${safe(r.stderr)}</pre></div>`:""}
   ${r?.executionError?`<div class="terminal-error"><strong>Exception:</strong> ${safe(r.executionError)}${r.traceback?`<details class="mt-12"><summary>Show Python traceback</summary><pre class="code-output">${safe(r.traceback)}</pre></details>`:""}</div>`:""}
   </div><p class="card-caption mt-12">The console accepts any number of <span class="mono">input()</span> requests. For <span class="mono">sys.stdin.read()</span>, supply all data in Optional Input Data before running.</p></div>
+  ${renderSmartDebugger()}
   <div class="card"><div class="panel-head"><span class="stat-ico teal">✦</span><div><h3>Debugger explanation</h3><p>Rule-based guidance · no API key</p></div></div>
   ${r?`<div class="callout"><strong>${r.inputRequired?"Waiting for keyboard input":r.executionError?"Suggested next step":"No runtime exception detected"}</strong><p>${safe(r.inputRequired?"Type a value in the Interactive Console and press Enter to continue. Each input is replayed to produce the next prompt or final result.":r.executionError?diagnose(r.executionError):"The script executed without a reported exception. If the output is incorrect, compare it with a known expected result or switch to Practice for unit-tested exercises.")}</p></div>`:
  `<p class="card-caption">When you run your code, Python will report errors such as NameError, TypeError, SyntaxError, IndentationError and more. We'll describe their likely causes here.</p>`}
@@ -217,6 +224,23 @@ function renderDebugger(){
   ${[["NameError","print(missing_value)"],["ZeroDivisionError","items = []\nprint(10 / len(items))"],["IndexError","data = [1, 2]\nprint(data[5])"],["SyntaxError","for n in range(4)\n    print(n)"]].map(([name,code],i)=>`<button class="challenge-card" data-action="sample-error" data-sample="${i}"><span class="stat-ico orange">⌁</span><span class="small"><strong>${name}</strong></span><span class="challenge-arrow">→</span></button>`).join("")}
   </div></div>
  </div></div>`;
+}
+function renderCustomTests(){
+ const results=state.customResults,passed=results.filter(r=>r.passed).length;
+ return `<section class="card custom-test-panel"><div class="flex-between"><div><h3 class="card-title">Custom Test Cases</h3><p class="card-caption">Provide input and the expected printed output. The compiler checks each case separately.</p></div>${pill(`${state.customCases.length}/10`,"ink")}</div>
+ <div class="custom-case-list">${state.customCases.map((c,i)=>`<div class="custom-case"><div class="flex-between"><strong>Case ${i+1}</strong><button class="btn btn-outline btn-sm" data-action="remove-case" data-id="${c.id}" ${state.customCases.length===1||state.busy?"disabled":""}>✕ Remove</button></div><div class="custom-fields"><label>Input (stdin)<textarea data-case-id="${c.id}" data-case-field="stdin" class="input mono" rows="3" placeholder="5" ${state.busy?"readonly":""}>${safe(c.stdin)}</textarea></label><label>Expected Output<textarea data-case-id="${c.id}" data-case-field="expected" class="input mono" rows="3" placeholder="120" ${state.busy?"readonly":""}>${safe(c.expected)}</textarea></label></div></div>`).join("")}</div>
+ <div class="editor-footer"><button class="btn btn-soft" data-action="add-case" ${state.busy||state.customCases.length>=10?"disabled":""}>+ Add Case</button><button class="btn btn-primary" data-action="run-custom" ${state.busy||state.customRunning?"disabled":""}>${state.customRunning?"Running tests…":"▷ Run Custom Tests"}</button></div>
+ ${results.length?`<div class="custom-results"><strong>${passed}/${results.length} custom tests passed</strong>${results.map(r=>`<div class="custom-result ${r.passed?"passed":"failed"}"><div class="flex-between"><b>${r.passed?"✓":"✕"} Case ${r.index}</b>${pill(r.passed?"PASS":"FAIL",r.passed?"success":"warn")}</div>${!r.passed?`<div class="custom-actual"><div>Expected:</div><pre>${safe(r.expected)}</pre><div>Actual:</div><pre>${safe(r.actual)}</pre>${r.error?`<div class="error-message">${safe(r.error)}</div>`:""}</div>`:""}</div>`).join("")}</div>`:""}
+ </section>`;
+}
+function renderSmartDebugger(){
+ const findings=state.reviewFindings;
+ return `<section class="card smart-debugger"><div class="flex-between"><div><h3 class="card-title">AI Code Debugger</h3><p class="card-caption">Local static analysis now · generative AI activates with a server-side API key.</p></div>${pill(state.aiAvailable?"AI CONNECTED":"LOCAL MODE",state.aiAvailable?"success":"warn")}</div>
+ <p class="card-caption mt-12">Without an API key, this reviewer detects common coding patterns and uses runtime/test evidence. It is <strong>not</strong> a generative AI model. When AI is enabled, clicking Analyze with AI sends the displayed source and error context to the configured provider.</p>
+ <div class="editor-footer"><button class="btn btn-primary" data-action="review-local">✦ Analyze locally</button><button class="btn btn-soft" data-action="review-ai" ${!state.aiAvailable||state.aiBusy?"disabled":""}>${state.aiBusy?"Analyzing…":"✦ Analyze with AI"}</button></div>
+ ${findings?`<div class="review-findings">${findings.map(f=>`<div class="review-finding"><div class="flex-between"><strong>${f.line?`Line ${f.line} · `:""}${safe(translateText(f.title,language))}</strong>${pill(f.severity.toUpperCase(),f.severity==='error'?"warn":"ink")}</div><p>${safe(translateText(f.detail,language))}</p><p><b>Suggestion:</b> ${safe(translateText(f.fix,language))}</p></div>`).join("")}</div>`:`<div class="empty mini-empty"><p>Click Analyze locally to inspect the code, recent errors, and failed custom tests.</p></div>`}
+ ${state.aiResult?`<div class="ai-result"><strong>AI analysis</strong><pre>${safe(state.aiResult)}</pre></div>`:""}${state.aiError?`<p class="error-message">${safe(state.aiError)}</p>`:""}
+ ${!state.aiAvailable?`<p class="card-caption">AI integration is prepared but inactive. The owner can later configure OPENAI_API_KEY in Vercel's server-side environment settings.</p>`:""}</section>`;
 }
 const SAMPLES=["print(missing_value)","items = []\nprint(10 / len(items))","data = [1, 2]\nprint(data[5])","for n in range(4)\n    print(n)"];
 function renderAnalytics(){
@@ -302,6 +326,7 @@ function wireEditor(editor,gutterSelector,onChange,onRun){
 
 function render(){
  const body={dashboard:renderDashboard,practice:renderPractice,debugger:renderDebugger,analytics:renderAnalytics,guide:renderGuide};
+ disposeMonaco();
  el("#app").innerHTML=(body[state.page]||renderDashboard)();
  document.querySelectorAll("#nav [data-page], .workspace-tabs [data-page]").forEach(b=>b.classList.toggle("active",b.dataset.page===state.page));
  const titles={dashboard:"Overview",practice:"Debug playground",debugger:"Python Compiler",analytics:"Analytics",guide:"Guide"};
@@ -310,11 +335,19 @@ function render(){
  if(state.page==="practice"){
   const editor=el("#practice-editor");
   if(editor)wireEditor(editor,"#practice-gutter",()=>{state.code=editor.value;state.result=null;state.revealed=false;storageWrite();},performPracticeRun);
+  if(editor&&typeof window!=="undefined")void enhancePythonEditor("practice-editor",value=>{state.code=value;state.result=null;state.revealed=false;storageWrite();},performPracticeRun);
   el("#variant-picker")?.addEventListener("change",event=>selectTask(state.taskId,Number(event.target.value)));
  }else if(state.page==="debugger"){
   const freeEditor=el("#free-editor");
   if(freeEditor)wireEditor(freeEditor,"#free-gutter",()=>{state.freeCode=freeEditor.value;state.freeResult=null;storageWrite();},performFreeRun);
+  if(freeEditor&&typeof window!=="undefined")void enhancePythonEditor("free-editor",value=>{state.freeCode=value;state.freeResult=null;storageWrite();},performFreeRun);
   el("#stdin-editor")?.addEventListener("input",event=>{state.freeInput=event.target.value;state.freeResult=null;storageWrite();});
+  document.querySelectorAll('[data-case-id][data-case-field]').forEach(node=>node.addEventListener('input',event=>{
+   const item=state.customCases.find(c=>String(c.id)===event.target.dataset.caseId);
+   if(item&&['stdin','expected'].includes(event.target.dataset.caseField)){
+    item[event.target.dataset.caseField]=event.target.value;state.customResults=[];storageWrite();
+   }
+  }));
   el("#terminal-input")?.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();void supplyConsoleInput();}});
   if(state.freeResult?.inputRequired){el("#terminal-input")?.focus();}
  }
@@ -364,6 +397,48 @@ async function performPracticeRun(){
   state.result={tests:[],executionError:error.message};
   notify(error.message,true);
  }finally{state.busy=false;render();}
+}
+async function runCustomTests(){
+ if(state.busy)return;
+ const error=validateCases(state.customCases);
+ if(error){notify(error,true);return;}
+ const cases=state.customCases.map(c=>({...c})),source=state.freeCode;
+ state.busy=true;state.customRunning=true;state.customResults=[];render();
+ try{
+  for(let i=0;i<cases.length;i++){
+   let result;
+   try{result=await runPython({mode:'custom_test',code:source,stdin:initialStdin(cases[i].stdin),tests:[]});}
+   catch(err){result={stdout:'',executionError:String(err.message||err)};}
+   state.customResults.push(buildCaseResult(i+1,cases[i],result));
+  }
+  state.reviewFindings=reviewPython(source,state.freeResult,state.customResults);
+  notify(`${state.customResults.filter(r=>r.passed).length}/${state.customResults.length} custom tests passed`);
+ }finally{state.busy=false;state.customRunning=false;render();}
+}
+function runLocalReview(){
+ state.reviewFindings=reviewPython(state.freeCode,state.freeResult,state.customResults);
+ state.aiResult='';state.aiError='';render();
+}
+async function checkAIAvailability(){
+ if(state.aiChecked||typeof window==='undefined'||typeof fetch!=='function')return;
+ state.aiChecked=true;
+ try{
+  const res=await fetch('/api/debug',{method:'GET'});
+  if(res.ok){const info=await res.json();state.aiAvailable=info.enabled===true;
+   if(state.page==='debugger')render();}
+ }catch{state.aiAvailable=false;}
+}
+async function runAIReview(){
+ if(!state.aiAvailable||state.aiBusy)return;
+ state.aiBusy=true;state.aiError='';state.aiResult='';render();
+ try{
+  const context=JSON.stringify({runtimeError:state.freeResult?.executionError||null,failedTests:state.customResults.filter(r=>!r.passed).slice(0,5)}).slice(0,3000);
+  const res=await fetch('/api/debug',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code:state.freeCode.slice(0,12000),context,language})});
+  const data=await res.json();
+  if(!res.ok)throw new Error(data.error||'AI analysis is unavailable');
+  state.aiResult=data.analysis||'';
+ }catch(error){state.aiError=String(error.message||error);}
+ finally{state.aiBusy=false;render();}
 }
 let freeRunToken=0;
 function initialStdin(value){
@@ -440,6 +515,7 @@ document.querySelector('#language-select')?.addEventListener('change',event=>{
  try{localStorage.setItem(LANGUAGE_KEY,language);}catch{}
  render();
 });
+if(typeof window!=="undefined")void checkAIAvailability();
 document.addEventListener("click",event=>{
  const clickable=event.target.closest("button[data-page],button[data-action]");
  if(!clickable)return;
@@ -458,6 +534,11 @@ document.addEventListener("click",event=>{
   case "apply-reference":if(!state.result)return;state.code=solution();state.revealed=true;state.result=null;storageWrite();render();notify("Reference solution inserted. Run the tests to verify.");return;
   case "practice-run":void performPracticeRun();return;
   case "free-run":void performFreeRun();return;
+  case "add-case":if(state.customCases.length<10){state.customCases.push({id:Date.now()+Math.floor(Math.random()*100),stdin:'',expected:''});state.customResults=[];storageWrite();render();}return;
+  case "remove-case":if(state.customCases.length>1){state.customCases=state.customCases.filter(c=>String(c.id)!==String(clickable.dataset.id));state.customResults=[];storageWrite();render();}return;
+  case "run-custom":void runCustomTests();return;
+  case "review-local":runLocalReview();return;
+  case "review-ai":void runAIReview();return;
   case "send-console-input":void supplyConsoleInput();return;
   case "stop-free":cancelFreeRun();state.freeResult={tests:[],stdout:state.freeResult?.stdout||"",executionError:"Execution stopped by user."};render();notify("Python execution stopped.");return;
   case "clear-console":cancelFreeRun();state.freeResult=null;render();return;

@@ -350,6 +350,61 @@ Object.assign(pairs,{
 "CONCEPTUAL HINT":["概念提示","Ойлголтын зөвлөгөө"],
 "DETAILED-FIX HINT":["详细修复提示","Нарийн засварын зөвлөгөө"]
 });
+Object.assign(pairs,{
+"Custom Test Cases":["自定义测试用例","Өөрийн тестүүд"],
+"Provide input and the expected printed output. The compiler checks each case separately.":["提供输入和预期的打印输出。编译器会单独测试每种情况。","Оролт болон хүлээгдсэн хэвлэгдэх үр дүнг бич. Тест бүрийг тусад нь шалгана."],
+"Input (stdin)":["输入（stdin）","Оролт (stdin)"],
+"Expected Output":["预期输出","Хүлээгдсэн гаралт"],
+"Remove":["删除","Устгах"],
+"Add Case":["添加测试用例","Тест нэмэх"],
+"Run Custom Tests":["运行自定义测试","Өөрийн тестийг ажиллуулах"],
+"Running tests…":["正在运行测试…","Тест ажиллаж байна…"],
+"custom tests passed":["个自定义测试通过","өөрийн тест тэнцсэн"],
+"PASS":["通过","ТЭНЦСЭН"],
+"FAIL":["失败","ТЭНЦЭЭГҮЙ"],
+"Actual:":["实际输出：","Бодит гаралт:"],
+"AI Code Debugger":["AI 代码调试助手","AI кодын алдаа засагч"],
+"Local static analysis now · generative AI activates with a server-side API key.":["目前使用本地静态分析 · 配置服务器 API 密钥后启用生成式 AI。","Одоогоор local шинжилгээтэй · серверийн API түлхүүр нэмсний дараа генератив AI идэвхжинэ."],
+"AI CONNECTED":["AI 已连接","AI ХОЛБОГДСОН"],
+"LOCAL MODE":["本地模式","LOCAL ГОРИМ"],
+"Without an API key, this reviewer detects common coding patterns and uses runtime/test evidence. It is not a generative AI model.":["无 API 密钥时，本工具根据常见代码模式及运行和测试结果分析，并非生成式 AI 模型。","API түлхүүргүй үед нийтлэг алдаа, ажиллуулалт, тестийн үр дүнд суурилж шалгана. Генератив AI загвар биш."],
+"Analyze locally":["本地分析","Локал шинжлэх"],
+"Analyze with AI":["使用 AI 分析","AI-аар шинжлэх"],
+"Analyzing…":["分析中…","Шинжилж байна…"],
+"Suggestion:":["建议：","Зөвлөгөө:"],
+"Click Analyze locally to inspect the code, recent errors, and failed custom tests.":["点击“本地分析”，检查代码、最近错误和失败测试。","“Локал шинжлэх” дарж код, сүүлийн алдаа, бүтэлгүй тестүүдийг шалга."],
+"AI analysis":["AI 分析结果","AI шинжилгээ"],
+"AI integration is prepared but inactive. The owner can later configure OPENAI_API_KEY in Vercel's server-side environment settings.":["AI 接口已准备好但尚未启用。站长可在 Vercel 服务端环境变量中配置 OPENAI_API_KEY。","AI холболтын бэлтгэл бэлэн ч идэвхгүй. Дараа нь Vercel-ийн серверийн орчны хувьсагчид OPENAI_API_KEY тохируулна."]
+});
+Object.assign(pairs,{
+"Assignment used in condition":["条件中使用了赋值","Нөхцөлд оноолт хийсэн"],
+"A Python condition must compare values with ==, not assign with =.":["Python 条件判断必须使用 == 比较，而不能使用 = 赋值。","Python нөхцөлд утгыг == -ээр харьцуулна, =-ээр оноохгүй."],
+"Use == inside the if condition.":["在 if 条件中使用 ==。","if нөхцөлд == ашигла."],
+"Division by zero":["除数为零","Тэгээр хуваасан"],
+"This expression divides by the literal zero and will raise ZeroDivisionError.":["此表达式除以零，会导致 ZeroDivisionError。","Энэ илэрхийлэл тэгээр хувааж ZeroDivisionError үүсгэнэ."],
+"Choose a nonzero divisor or guard it with an if statement.":["使用非零除数，或添加 if 判断。","Тэг биш хуваагч хэрэглэ эсвэл if нөхцөлөөр хамгаал."],
+"Bare except":["裸 except 语句","Ерөнхий except"],
+"This catches almost everything, including interruption signals, and can conceal bugs.":["它几乎捕获所有异常，可能掩盖程序错误。","Энэ нь бараг бүх алдааг барьж, жинхэнэ алдааг нууж болзошгүй."],
+"Catch a specific exception, such as except ValueError:.":["捕获指定异常，例如 except ValueError:。","except ValueError: гэх мэт тодорхой алдааг барь."],
+"Dynamic code evaluation":["动态代码执行","Динамик код ажиллуулах"],
+"Executing user-controlled text can cause unexpected behavior.":["执行用户控制的文本可能导致意外行为。","Хэрэглэгчийн өгсөн текстийг код болгож ажиллуулах нь эрсдэлтэй."],
+"Parse or validate input instead of evaluating it as Python code.":["先解析或验证输入，不要直接作为 Python 代码运行。","Оролтыг Python код болгож ажиллуулахын оронд шалга."],
+"Possible off-by-one loop":["可能存在循环边界错误","Давталтын заагийн алдаа байж магадгүй"],
+"The final element is excluded because range stops before its endpoint.":["由于 range 不包含终点，最后一个元素会被跳过。","range төгсгөлийг оруулдаггүй тул сүүлийн элемент алгасагдана."],
+"Check whether range(len(items)) is what you intended.":["确认是否应使用 range(len(items))。","range(len(items)) хэрэгтэй эсэхийг шалга."],
+"Potential infinite loop":["可能无限循环","Төгсгөлгүй давталт байж магадгүй"],
+"A while True loop has no obvious break or return statement.":["while True 循环中未发现明显的 break 或 return。","while True давталтад break эсвэл return харагдахгүй байна."],
+"Add a termination condition or ensure a reachable break statement.":["添加终止条件，或确保 break 能执行到。","Зогсох нөхцөл эсвэл биелэх break нэм."],
+"Identity vs value comparison":["身份比较与值比较","Объектын ижил байдал ба утгын харьцуулалт"],
+"is checks object identity, not equal values.":["is 用于判断对象身份，而不是数值相等。","is нь утга биш объект ижил эсэхийг шалгана."],
+"Use == when comparing literal values.":["比较普通数值请使用 ==。","Энгийн утгуудыг == ашиглаж харьцуул."],
+"Printed result rather than returned value":["打印结果而非返回结果","Буцаахын оронд хэвлэсэн үр дүн"],
+"Your function may only print. Automated tests that expect return values will see None.":["函数可能只打印内容，没有返回值，自动化测试会得到 None。","Функц зөвхөн хэвлэж байвал тестүүд буцаах утгаас None авна."],
+"Return a value if the specification expects one.":["如果题目要求返回值，请使用 return。","Бодлого утга буцаахыг шаардвал return ашигла."],
+"No obvious issues found":["未发现明显错误","Илэрхий алдаа илрээгүй"],
+"The local reviewer did not detect a known pattern. This is not proof of correctness.":["本地检测未发现已知错误模式，但不能证明程序一定正确。","Local шинжилгээ нийтлэг алдаа олоогүй. Энэ нь код бүрэн зөв гэдгийн баталгаа биш."],
+"Add custom tests with edge cases and inspect actual outputs.":["添加包含边界情况的自定义测试并检查输出。","Заагийн тохиолдолтой тест нэмж бодит гаралтаа шалга."]
+});
 export const translations=Object.fromEntries(Object.entries(pairs).map(([en,[zh,mn]])=>[en,{zh,mn}]));
 export function translateText(text,language){
  if(language==='en')return text;

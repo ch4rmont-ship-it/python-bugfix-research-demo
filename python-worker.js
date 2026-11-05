@@ -29,12 +29,14 @@ class InputRequired(BaseException):
 
 def compiler_input(prompt=""):
     prompt = str(prompt)
-    print(prompt, end="", flush=True)
+    if payload.get("mode") != "custom_test":
+        print(prompt, end="", flush=True)
     line = sys.stdin.readline()
     if line == "":
         raise InputRequired(prompt)
     answer = line.removesuffix(chr(10)).removesuffix(chr(13))
-    print(answer)
+    if payload.get("mode") != "custom_test":
+        print(answer)
     return answer
 
 def encode(value):
@@ -43,7 +45,7 @@ def encode(value):
     except (TypeError, ValueError):
         return repr(value)
 try:
-    if payload.get("mode") == "execute":
+    if payload.get("mode") in ("execute", "custom_test"):
         builtins.input = compiler_input
     try:
         with contextlib.redirect_stdout(capture), contextlib.redirect_stderr(err_capture):
