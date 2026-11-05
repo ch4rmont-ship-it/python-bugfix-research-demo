@@ -146,7 +146,7 @@ function renderDebugger(){
  <div class="grid" style="align-items:start">
   <div class="card editor-card"><div class="editor-bar"><span class="editor-file"><span class="editor-dot"></span>my_python_script.py</span>${pill("Free-form Python")}</div>
   <textarea id="free-editor" class="editor-textarea" style="min-height:360px" spellcheck="false" aria-label="Custom Python code">${safe(state.freeCode)}</textarea>
-  <div class="stdin-panel"><div class="flex-between"><label class="label" for="stdin-editor">STANDARD INPUT (stdin)</label>${pill("input() supported","success")}</div><textarea id="stdin-editor" class="input stdin-textarea mono" rows="3" placeholder="10&#10;20" spellcheck="false" aria-label="Input values, one per line">${safe(state.freeInput)}</textarea><p class="card-caption">One value per line. Every Python <span class="mono">input()</span> reads the next line. Example: type 10 on line 1 and 20 on line 2.</p><button class="btn btn-soft btn-sm mt-12" data-action="sample-add">+ Load A + B input example</button></div>
+  <div class="stdin-panel"><div class="flex-between"><label class="label" for="stdin-editor">STANDARD INPUT (stdin)</label>${pill("input() supported","success")}</div><textarea id="stdin-editor" class="input stdin-textarea mono" rows="3" placeholder="10&#10;20" spellcheck="false" aria-label="Input values, one per line">${safe(state.freeInput)}</textarea><p class="card-caption">One value per line. Every Python <span class="mono">input()</span> reads the next line. Example: type 10 on line 1 and 20 on line 2.</p><button class="btn btn-soft btn-sm mt-12" data-action="sample-add">+ Load A + B input example</button> <button class="btn btn-outline btn-sm mt-12" data-action="sample-three">+ Load 3-number example</button></div>
   <div class="editor-footer"><button class="btn btn-primary" data-action="free-run" ${state.busy?"disabled":""}>${state.busy?"Executing…":"▷ Execute Python"}</button><button class="btn btn-outline" data-action="copy-free">Copy code</button><span class="xs muted">No account · browser-only execution</span></div></div>
   <div class="callout"><strong>How this works:</strong> Python runs in a disposable Web Worker using Pyodide (WebAssembly). Exceptions are classified with deterministic guidance. General semantic/logic correctness cannot be established without test cases and an expected result.</div>
  </div>
@@ -154,7 +154,7 @@ function renderDebugger(){
   <div class="card"><div class="panel-head"><span class="stat-ico purple">⌘</span><div><h3>Execution console</h3><p>Standard output and exception information</p></div></div>
   ${r?`<div class="flex-between">${pill(r.executionError?"ERROR":"SUCCESS",r.executionError?"warn":"success")}</div>
   <pre class="code-output mt-18">${safe(r.stdout||"(No output printed)")}</pre>
-  ${r.executionError?`<div class="hint-card"><strong>EXCEPTION</strong><p class="mono">${safe(r.executionError)}</p></div>`:""}
+  ${r.executionError?`<div class="hint-card"><strong>EXCEPTION</strong><p class="mono">${safe(r.executionError)}</p>${/^EOFError/.test(r.executionError)?`<p>Missing input: your Python code requests more values than the Standard Input box provides. Put each value on its own line, then press Execute Python again.</p>`:""}</div>`:""}
   `:`<div class="empty"><div class="empty-icon">▷</div><h3>Nothing executed yet</h3><p>Press Execute Python to view output and errors.</p></div>`}</div>
   <div class="card"><div class="panel-head"><span class="stat-ico teal">✦</span><div><h3>Debugger explanation</h3><p>Rule-based guidance · no API key</p></div></div>
   ${r?`<div class="callout"><strong>${r.executionError?"Suggested next step":"No runtime exception detected"}</strong><p>${safe(r.executionError?diagnose(r.executionError):"The script executed without a reported exception. If the output is incorrect, compare it with a known expected result or switch to Practice for unit-tested exercises.")}</p></div>`:
@@ -277,7 +277,7 @@ async function performFreeRun(){
  const code=state.freeCode;state.busy=true;render();notify("Executing Python in a browser worker…");
  try{
   state.freeResult=await runPython({mode:"execute",code,stdin:state.freeInput,tests:[]});
-  notify(state.freeResult.executionError?"Python returned an exception.":"Execution complete.",!!state.freeResult.executionError);
+  notify(state.freeResult.executionError?`Python error: ${state.freeResult.executionError}`:"Execution complete.",!!state.freeResult.executionError);
  }catch(e){state.freeResult={tests:[],stdout:"",executionError:e.message};notify(e.message,true);}
  finally{state.busy=false;render();}
 }
@@ -315,6 +315,7 @@ document.addEventListener("click",event=>{
   case "copy-free":{const code=state.freeCode;if(navigator.clipboard?.writeText){navigator.clipboard.writeText(code).then(()=>notify("Code copied."),()=>notify("Clipboard unavailable.",true));}else{notify("Clipboard requires HTTPS.",true);}return;}
   case "sample-error":state.freeCode=SAMPLES[Number(clickable.dataset.sample)]||DEFAULT_CODE;state.freeResult=null;storageWrite();render();return;
   case "sample-add":state.freeCode='A = int(input("Enter A: "))\nB = int(input("Enter B: "))\nprint("A + B =", A + B)';state.freeInput="10\n20";state.freeResult=null;storageWrite();render();notify("A + B example loaded with two input values.");return;
+  case "sample-three":state.freeCode='A = int(input("Enter A: "))\nB = int(input("Enter B: "))\nC = int(input("Enter C: "))\nprint("Maximum:", max(A, B, C))\nprint("Minimum:", min(A, B, C))\nprint("Average:", (A + B + C) / 3)';state.freeInput="15\n30\n45";state.freeResult=null;storageWrite();render();notify("Three-number example and its three inputs loaded.");return;
   case "export-csv":exportCsv();return;
   case "clear-history":if(confirm("Delete all recorded practice history from this browser? This cannot be undone.")){state.history=[];storageWrite();render();notify("Progress records cleared.");}return;
  }
