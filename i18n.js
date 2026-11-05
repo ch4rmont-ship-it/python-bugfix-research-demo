@@ -431,6 +431,38 @@ Object.assign(pairs,{
 Object.assign(pairs,{
 "Use preloaded stdin instead of entering values in the terminal":["使用预先输入的数据，不在终端逐项输入","Terminal-д гараас оруулахын оронд урьдчилан өгсөн stdin ашиглах"]
 });
+Object.assign(pairs,{
+"Project Workspace":["项目工作区","Төслийн орчин"],
+"Full Python Project":["完整 Python 项目","Бүрэн Python төсөл"],
+"Import a folder, edit nested files, and run the selected Python entry point.":["导入文件夹、编辑其中的文件，并运行所选的 Python 入口程序。","Folder оруулж, доторх файлыг засварлаад сонгосон Python файлаа ажиллуул."],
+"Open Folder":["打开文件夹","Folder нээх"],
+"Open a Python project folder":["打开 Python 项目文件夹","Python төслийн folder нээх"],
+"Loading saved project…":["正在加载已保存的项目…","Хадгалсан төслийг ачаалж байна…"],
+"Choose Folder":["选择文件夹","Folder сонгох"],
+"Choose a folder from your computer. Keep its nested files together, browse them in Explorer, and run a Python entry point.":["从电脑选择文件夹。保留嵌套文件，在资源管理器中浏览并运行 Python 入口文件。","Компьютероосоо folder сонго. Доторх файлууд Explorer-д гарч, эхлэх Python файлаа ажиллуулна."],
+"Importing files…":["正在导入文件…","Файлуудыг ачаалж байна…"],
+"New File":["新建文件","Шинэ файл"],
+"Close Project":["关闭项目","Төсөл хаах"],
+"Entry file":["入口文件","Эхлэх файл"],
+"Run Project":["运行项目","Төсөл ажиллуулах"],
+"Saved locally":["本地已保存","Дотоод хадгалалт"],
+"No file selected":["未选择文件","Файл сонгоогүй"],
+"Editable":["可编辑","Засварлах боломжтой"],
+"Binary":["二进制文件","Хоёртын файл"],
+"No file":["没有文件","Файл алга"],
+"Select a file in the Explorer.":["请在资源管理器中选择文件。","Explorer-оос файл сонго."],
+"Binary file: kept for execution but not editable here.":["二进制文件可用于运行，但不能在此编辑。","Хоёртын файлыг ажиллуулахад ашиглана, энд засах боломжгүй."],
+"Advanced: preloaded stdin":["高级：预先输入 stdin","Нэмэлт: stdin урьдчилан оруулах"],
+"Use preloaded stdin":["使用预先输入的 stdin","Урьдчилан өгсөн stdin ашиглах"],
+"Local IndexedDB storage":["本地 IndexedDB 存储","Дотоод IndexedDB хадгалалт"],
+"Run Project in browser Python":["在浏览器 Python 中运行项目","Браузер Python-д төсөл ажиллуулах"],
+"Open a project folder first.":["请先打开项目文件夹。","Эхлээд төслийн folder нээ."],
+"File already exists.":["文件已存在。","Файл аль хэдийн байна."],
+"Project file limit reached.":["已达到项目文件数量限制。","Төслийн файлын хязгаарт хүрлээ."],
+"Running project in browser Python…":["正在浏览器 Python 中运行项目…","Төслийг браузерийн Python-д ажиллуулж байна…"],
+"Multi-file Python imports and bundled data files work in the browser. Temporary files created by running code are not saved. Packages missing from Pyodide, native apps, and external services may not run.":["支持浏览器中导入多个 Python 文件及读取项目数据。运行时产生的临时文件不会保存。Pyodide 未提供的第三方包、原生程序及外部服务可能无法运行。","Олон Python файл импортлох, өгөгдөл унших боломжтой. Ажиллуулах үед үүссэн түр файлууд хадгалагдахгүй. Pyodide-д байхгүй сан, native програм болон гадаад үйлчилгээ ажиллахгүй байж болно."],
+"EXPLORER":["资源管理器","ФАЙЛЫН САН"]
+});
 export const translations=Object.fromEntries(Object.entries(pairs).map(([en,[zh,mn]])=>[en,{zh,mn}]));
 export function translateText(text,language){
  if(language==='en')return text;

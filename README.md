@@ -128,3 +128,16 @@ The terminal's **×** button hides it without stopping an input session, and **O
 **Implementation note:** the Pyodide Worker replays the source with collected input on each new prompt instead of suspending a native interactive process. Therefore this mechanism is appropriate for deterministic learning exercises, but not equivalent to a true persistent native Python process when the code has nondeterministic or external side effects.
 
 Previous versions may have saved input in the browser. **Interactive terminal mode is now the default**, even if old stdin data exists. To feed batch data, expand **Advanced: preload standard input**, check **Use preloaded stdin**, and enter your lines; typing new data automatically enables batch mode. Click a quick example to return to interactive mode.
+
+## Full Python Project Workspace (folder upload)
+
+Navigate to **Project Workspace → Open Folder**. In Chrome or Edge, select an existing Python project directory using the browser folder picker. The importer preserves subfolders (including packages, source files, JSON, CSV, text, and small binary assets) and displays them in a VS Code-style Explorer. It deliberately excludes `.git`, virtual environments (`venv`, `.venv`), build caches, `node_modules`, and `.env` files.
+
+- Click any text file to edit it with Monaco (or the fallback editor). Changes are automatically saved to **IndexedDB in this browser**, not uploaded to any server.
+- Use **New File** to add a `.py` or other text file at a relative path such as `src/utils.py`.
+- Choose a Python script in the **Entry file** dropdown; the importer preferentially selects `main.py`, `app.py`, or `run.py`.
+- Click **Run Project**. Every uploaded file is temporarily mounted in the Pyodide virtual filesystem; Python imports like `from utils import greet`, package imports like `from src.utils import greet`, and file reads like `open('data/values.csv')` can work without modifying the source. The bottom terminal opens and asks for `input()` values when needed.
+- Expand **Advanced: preloaded stdin** if you want to supply several lines of input before execution.
+- **Close Project** removes the browser-stored working copy. Original files on your computer are not modified by editing inside the browser.
+
+**Limits:** 250 files per project, 20 MB total, and 8 MB per file. Editing and runtime execution are browser-local. This is not a server-based Python environment: dependencies outside Pyodide's available libraries, native applications, background services, sockets, or OS-specific programs may not work. Writes created by the executing Python process live only in the temporary runtime and are not copied back into your project. Each interactive `input()` prompt replays the program with previously entered values. There is no direct host-disk access outside files explicitly chosen by the user.

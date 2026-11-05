@@ -3,6 +3,8 @@ import {SOLUTIONS} from "./solutions.js";
 import {disposeMonaco,enhancePythonEditor} from "./monaco-loader.js";
 import {reviewPython} from "./code-review.js";
 import {buildCaseResult,validateCases,defaultCases} from "./custom-tests.js";
+import {importFolderFileList,loadProject,saveProject,clearProject,projectPayload,normalizedProjectPath} from "./project-files.js";
+import {renderProjectWorkspace as renderProjectPage} from "./project-ui.js";
 import {LANGUAGE_KEY,supportedLanguages,translateText} from "./i18n.js";
 
 const KEY = "pylab-full-demo-v2";
@@ -80,6 +82,7 @@ const state = {
  history:Array.isArray(saved.history)?saved.history:[],
  customCases:Array.isArray(saved.customCases)&&saved.customCases.length&&saved.customCases.length<=10?saved.customCases.map(c=>({id:Number(c.id)||Date.now(),stdin:String(c.stdin||""),expected:String(c.expected||"")})):defaultCases.map(c=>({...c})),
  customResults:[], customRunning:false, reviewFindings:null, aiAvailable:false, aiChecked:false, aiResult:"", aiError:"", aiBusy:false,
+ project:null, projectLoading:true, projectImporting:false, projectError:"",
  hints:0, result:null, freeResult:null, freeSession:null, consoleOpen:false, busy:false, working:"", revealed:false,
  tool:"explanation"
 };
@@ -221,6 +224,7 @@ function renderDebugger(){
  </div></div>
  ${renderCompilerDrawer()}`;
 }
+function renderProjectWorkspace(){return renderProjectPage(state,{title,pill,safe,renderDrawer:renderCompilerDrawer});}
 function renderCompilerDrawer(){
  if(!state.consoleOpen)return '';
  const result=state.freeResult;
@@ -342,11 +346,11 @@ function wireEditor(editor,gutterSelector,onChange,onRun){
 }
 
 function render(){
- const body={dashboard:renderDashboard,practice:renderPractice,debugger:renderDebugger,analytics:renderAnalytics,guide:renderGuide};
+ const body={dashboard:renderDashboard,practice:renderPractice,debugger:renderDebugger,project:renderProjectWorkspace,analytics:renderAnalytics,guide:renderGuide};
  disposeMonaco();
  el("#app").innerHTML=(body[state.page]||renderDashboard)();
  document.querySelectorAll("#nav [data-page], .workspace-tabs [data-page]").forEach(b=>b.classList.toggle("active",b.dataset.page===state.page));
- const titles={dashboard:"Overview",practice:"Debug playground",debugger:"Python Compiler",analytics:"Analytics",guide:"Guide"};
+ const titles={dashboard:"Overview",practice:"Debug playground",debugger:"Python Compiler",project:"Project Workspace",analytics:"Analytics",guide:"Guide"};
  el("#page-crumb").textContent=titles[state.page]||"Overview";
  translateDOM();
  if(state.page==="practice"){
@@ -369,6 +373,20 @@ function render(){
   el("#terminal-input")?.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();void supplyConsoleInput();}});
   if(state.consoleOpen){const viewport=el("#terminal-scrollback");if(viewport&&typeof viewport.scrollHeight==="number")viewport.scrollTop=viewport.scrollHeight;}
   if(state.freeResult?.inputRequired&&state.consoleOpen){el("#terminal-input")?.focus();}
+ }else if(state.page==='project'){
+  const editor=el('#project-editor');
+  const file=state.project?.files.find(f=>f.path===state.project.active);
+  if(editor&&file){
+   const onEdit=()=>{file.text=editor.value;file.size=new TextEncoder().encode(file.text).length;scheduleProjectSave();};
+   wireEditor(editor,'#project-gutter',onEdit,performProjectRun);
+   if(typeof window!=='undefined')void enhancePythonEditor('project-editor',value=>{file.text=value;file.size=new TextEncoder().encode(value).length;scheduleProjectSave();},performProjectRun);
+  }
+  el('#project-folder-input')?.addEventListener('change',event=>{void handleFolderImport(event.target.files);});
+  el('#project-entry-select')?.addEventListener('change',event=>{if(state.project){state.project.entry=event.target.value;scheduleProjectSave();}});
+  el('#project-stdin')?.addEventListener('input',event=>{if(state.project){state.project.stdin=event.target.value;scheduleProjectSave();}});
+  el('#project-use-preload')?.addEventListener('change',event=>{if(state.project){state.project.useBatch=event.target.checked;scheduleProjectSave();}});
+  el("#terminal-input")?.addEventListener("keydown",event=>{if(event.key==="Enter"){event.preventDefault();void supplyConsoleInput();}});
+  if(state.freeResult?.inputRequired&&state.consoleOpen)el('#terminal-input')?.focus();
  }
 }
 let worker=null,sequence=0,workerReady=false;
@@ -459,6 +477,63 @@ async function runAIReview(){
  }catch(error){state.aiError=String(error.message||error);}
  finally{state.aiBusy=false;render();}
 }
+let projectSaveTimer=null;
+function scheduleProjectSave(){
+ clearTimeout(projectSaveTimer);
+ projectSaveTimer=setTimeout(()=>{
+  if(state.project)void saveProject(state.project).catch(error=>{state.projectError='Project save failed: '+error.message;notify(state.projectError,true);});
+ },400);
+}
+async function handleFolderImport(files){
+ if(state.busy||state.projectImporting)return;
+ const selectedFiles=Array.from(files||[]);
+ state.projectImporting=true;state.projectError='';render();
+ try{
+  const parsed=await importFolderFileList(selectedFiles);
+  const project={...parsed,useBatch:false,stdin:''};
+  clearTimeout(projectSaveTimer);
+  await saveProject(project);
+  cancelFreeRun();state.freeResult=null;state.consoleOpen=false;
+  state.project=project;
+  notify(`Imported ${project.files.length} files from ${project.name}.`);
+ }catch(error){state.projectError=error.message||String(error);notify(state.projectError,true);}
+ finally{state.projectImporting=false;render();}
+}
+async function performProjectRun(){
+ if(state.busy)return;
+ const project=state.project;
+ if(!project){notify('Open a project folder first.',true);return;}
+ let data;
+ try{data=projectPayload(project);}catch(error){notify(error.message,true);return;}
+ cancelFreeRun();
+ const token=freeRunToken;
+ state.freeSession={mode:'project',project:data,code:'',stdin:project.useBatch?initialStdin(project.stdin||''):'',requests:0};
+ state.consoleOpen=true;state.freeResult=null;
+ await saveProject(project).catch(()=>{});
+ notify('Running project in browser Python…');
+ await executeFreeSession(token);
+}
+async function closeProjectWorkspace(){
+ if(state.busy){notify('Stop the running code first.',true);return;}
+ if(!confirm('Close this project and clear its saved browser copy?'))return;
+ clearTimeout(projectSaveTimer);
+ try{await clearProject();state.project=null;state.projectError='';state.freeResult=null;state.consoleOpen=false;render();}
+ catch(error){notify('Project storage error: '+error.message,true);}
+}
+function addProjectFile(){
+ if(!state.project||state.busy)return;
+ const raw=prompt('New file path, e.g. src/helper.py');
+ if(raw===null)return;
+ let path;
+ try{path=normalizedProjectPath(raw.trim());}catch(error){notify(error.message,true);return;}
+ if(state.project.files.some(f=>f.path===path)){notify('File already exists.',true);return;}
+ if(state.project.files.length>=250){notify('Project file limit reached.',true);return;}
+ state.project.files.push({path,isText:true,text:'',base64:'',size:0});
+ state.project.files.sort((a,b)=>a.path.localeCompare(b.path));
+ state.project.active=path;
+ if(!state.project.entry&&path.endsWith('.py'))state.project.entry=path;
+ scheduleProjectSave();render();
+}
 let freeRunToken=0;
 function initialStdin(value){
  const normalized=String(value||"").replace(/\r\n?/g,"\n");
@@ -474,7 +549,7 @@ async function executeFreeSession(token){
  if(!session)return;
  state.busy=true;render();
  try{
-  const result=await runPython({mode:"execute",code:session.code,stdin:session.stdin,tests:[]});
+  const result=await runPython({mode:session.mode||"execute",code:session.code,stdin:session.stdin,project:session.project,tests:[]});
   if(token!==freeRunToken)return;
   state.freeResult=result;
   state.busy=false;
@@ -541,7 +616,10 @@ document.addEventListener("click",event=>{
  if(!clickable)return;
  const page=clickable.dataset.page,action=clickable.dataset.action;
  if(page){
-  if(!["dashboard","practice","debugger","analytics","guide"].includes(page))return;
+  if(!["dashboard","practice","debugger","project","analytics","guide"].includes(page))return;
+  if((page==='project'||page==='debugger')&&state.page!==page){
+    cancelFreeRun();state.freeResult=null;state.consoleOpen=false;
+  }
   state.page=page;el("#sidebar").classList.remove("open");render();scrollTo({top:0,behavior:"instant"});return;
  }
  switch(action){
@@ -554,6 +632,10 @@ document.addEventListener("click",event=>{
   case "apply-reference":if(!state.result)return;state.code=solution();state.revealed=true;state.result=null;storageWrite();render();notify("Reference solution inserted. Run the tests to verify.");return;
   case "practice-run":void performPracticeRun();return;
   case "free-run":void performFreeRun();return;
+  case "project-run":void performProjectRun();return;
+  case "project-open-file":if(state.project){state.project.active=clickable.dataset.path;scheduleProjectSave();render();}return;
+  case "project-add-file":addProjectFile();return;
+  case "project-close":void closeProjectWorkspace();return;
   case "add-case":if(state.customCases.length<10){state.customCases.push({id:Date.now()+Math.floor(Math.random()*100),stdin:'',expected:''});state.customResults=[];storageWrite();render();}return;
   case "remove-case":if(state.customCases.length>1){state.customCases=state.customCases.filter(c=>String(c.id)!==String(clickable.dataset.id));state.customResults=[];storageWrite();render();}return;
   case "run-custom":void runCustomTests();return;
@@ -577,3 +659,8 @@ document.addEventListener("click",event=>{
 });
 render();
 
+void loadProject().then(project=>{
+ if(!state.project&&project?.files?.length)state.project=project;
+ state.projectLoading=false;
+ if(state.page==='project')render();
+}).catch(error=>{state.projectLoading=false;state.projectError='Saved project could not be opened: '+error.message;if(state.page==='project')render();});

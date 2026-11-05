@@ -109,3 +109,10 @@ test('quick A + B example keeps the input terminal on demand',async()=>{
  await tick();
  assert.match(screen.innerHTML,/id="terminal-input"/);
 });
+
+test('Project Workspace route offers browser folder upload without preloading a console',()=>{
+ click({page:'project'});
+ assert.match(screen.innerHTML,/Open Folder/);
+ assert.match(screen.innerHTML,/webkitdirectory/);
+ assert.doesNotMatch(screen.innerHTML,/id="compiler-drawer"/);
+});
